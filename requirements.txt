@@ -1,0 +1,6 @@
+Django==4.2.6
+django-browser-reload==1.18
+django-cors-headers==4.6.0
+httpx
+environs
+psycopg2-binary

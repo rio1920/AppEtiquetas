@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+      crossorigin="anonymous"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.6/dist/htmx.min.js"></script>
+
+    <title>Generador de Etiquetas</title>
+  </head>
+  <body>
+    <div class="container">
+      <h1 class="my-4">Sistema de Generación de Etiquetas</h1>
+
+      <ul class="nav nav-tabs mb-4" id="myTab" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button
+            class="nav-link active"
+            id="manual-tab"
+            data-bs-toggle="tab"
+            data-bs-target="#manual"
+            type="button"
+            role="tab"
+            aria-controls="manual"
+            aria-selected="true"
+          >
+            Edición Manual
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button
+            class="nav-link"
+            id="etiquetas-tab"
+            data-bs-toggle="tab"
+            data-bs-target="#etiquetas"
+            type="button"
+            role="tab"
+            aria-controls="etiquetas"
+            aria-selected="false"
+          >
+            Etiquetas Existentes
+          </button>
+        </li>
+      </ul>
+
+      <div class="tab-content" id="myTabContent">
+        <!-- Tab de edición manual -->
+        <div
+          class="tab-pane fade show active"
+          id="manual"
+          role="tabpanel"
+          aria-labelledby="manual-tab"
+        >
+          <div class="row">
+            <div class="col-5">
+              <form
+                hx-post="{% url 'etiqueta_png' %}"
+                hx-target="#target_etiqueta"
+                hx-swap="innerHTML"
+              >
+                {% csrf_token %}
+                <div class="mb-3">
+                  <label for="etiqueta" class="form-label">Código ZPL:</label>
+                  {% if etiqueta %}
+                  <textarea
+                    class="form-control"
+                    name="etiqueta"
+                    id="etiqueta"
+                    rows="20"
+                  >
+{{ descripcion_zpl }}</textarea
+                  >
+                  {% else %}
+                  <textarea
+                    class="form-control"
+                    name="etiqueta"
+                    id="etiqueta"
+                    rows="20"
+                  >
+^XA^CI0^XZ
+^XA
+^MMT
+^PW2362
+^LL2835
+^LS0
+^CI0
+^FO768,2144^GFA,02560,02560,00020,:Z64:
+eJztlTEKwkAQRVclLNhYiWWO4jZia2eZo2gpWHiN4Ck8goWtbI5gESGFcdwkuiY736ioRcARJrA83/58C4Vo8ChVPN77lk9mzh2zInsWZGckidLY4VZmJZyj1J4Nc26Z7TuntSYtzd4rxXy04T7aVu/NfRHgdoBLAHcE+U5VbpytveK+M/ClFY5yjp5yxfvSnHM04flsMaV8thj/ISc5d80XAW4HfHVcOd+B59PIlwBfXOboRe7a36mGK+er+sbA9+18y0/z6d/ma35/8F79Wn9T4OuBfA85p78B4CS41wP9Ia4PfB2QzwNcC/Tnzeq5m28U8P4E8LWAT8y4r/jhHM7nvqJoh+txnxppk8zJJ8G9+Qs7PoG4AHDdcL1uh2YtQvHmqOxj/9r+09S5AO135f8=:B6C8
+
+
+^FO1952,2112
+[@LOGOUSUARIO@]
+
+^FO1671,2176
+[@LOGOADICIONAL2@]
+
+^FO1728,2510
+[@LOGOADICIONAL1@]
+
+
+
+^FT2250,91^A0R,67,67^FH\^FDFRIGORIFICO RIOPLATENSE SAICIF^FS
+^FT1980,91^A0R,52,52^FH\^FDSACRIFICADO EN ARGENTINA: EST.N\F8.OF.1920 / DESPIECE EN ARGENTINA: EST.N\F8.OF.1920^FS
+^FT2050,91^A0R,58,58^FH\^FDORIGEN ARGENTINA / VENTA AL PESO^FS
+^FT2114,91^A0R,58,58^FH\^FDB1617ABL/ GRAL.PACHECO/ PROVINCIA BUENOS AIRES / ARGENTINA^FS
+^FT2180,91^A0R,58,58^FH\^FDAVDA DE LOS CONSTITUYENTES 2499^FS
+
+
+
+^FT1849,1104^A0R,58,57^FH\^FD[@DefinicionesCuartos.sDescripcion@]^FS
+^FT1771,1107^A0R,58,57^FH\^FD[@DefinicionesCuartos.sDescripcion;FI2@]^FS
+^FT1697,1105^A0R,58,57^FH\^FD[@DefinicionesCuartos.sDescripcion;FIIDIOMAVARIABLE@]^FS
+
+^FT1851,56^A0R,58,57^FH\^FD[@Definiciones.sDescripcion@]^FS
+^FT1773,56^A0R,58,57^FH\^FD[@Definiciones.sDescripcion;FI2@]^FS
+^FT1693,56^A0R,58,57^FH\^FD[@Definiciones.sDescripcion;FIIDIOMAVARIABLE@]^FS
+
+^FT1530,5^A0R,117,115^FB2200,1,0,C^FH\^FD[@Mercaderias.sDescripcion@]^FS
+^FT1382,5^A0R,117,115^FB2200,1,0,C^FH\^FD[@MercaderiasTraducciones.sDescripcion2@]^FS
+^FT1234,5^A0R,117,115^FB2200,1,0,C^FH\^FD[@MercaderiasTraducciones.sDescripcion[@IDIOMAVARIABLE@]@]^FS
+
+
+
+^LRY^FO1177,12^GB0,2103,484^FS^LRN
+
+^FT1094,1079^A0R,58,57^FH\^FDPESO NETO /NET WEIGHT /[@Peso Neto[@IDIOMAVARIABLE@]@] ^FS
+^FT974,1106^A0R,92,91^FH\^FD[@Primarias.iPeso;FK0.000@] [@UNIDADMEDIDA146@]^FS
+
+^FT1095,61^A0R,58,57^FH\^FDPARTIDA / LOT / [@Partida[@IDIOMAVARIABLE@]@]^FS
+^FT978,67^A0R,92,91^FH\^FD[@PlanesDetalleSalida.PedidoId@]^FS
+
+^FT1095,790^A0R,58,57^FH\^FDPLAN^FS
+^FT978,740^A0R,92,91^FH\^FD[@PlanesDetalleSalida.PlanId@]^FS
+
+
+^FT794,2266^A0R,42,40^FH\^FDINDUSTRIA ARGENTINA^FS
+^FT851,2267^A0R,42,40^FH\^FDSENASA N\F8 [@CODSENASA@]^FS
+
+^FT420,2800^A0N,55,45^FH\^FD[@Primarias.sCodbar@]^FS
+
+^FT1350,2180^A0R,220,220^FH\^FD[@VARIABLEAMPARO@]^FS
+
+
+^FT828,56^A0R,58,57^FH\^FDCONSERVAR A -18 \F8 C (NO RECONGELAR) / KEEP AT -18 \F8C (DO NOT REFREEZE)^FS
+^FT741,59^A0R,58,57^FH\^FD[@Conservar a -18 \F8CC (no recongelar)[@IDIOMAVARIABLE@]@]^FS
+
+
+^FT600,20^A0R,67,62^FH\^FD[@LEYENDATRAZABILIDAD5@]^FS
+^FT525,20^A0R,67,62^FH\^FD[@LEYENDATRAZABILIDAD6@]^FS
+^FT440,20^A0R,67,62^FH\^FD[@LEYENDATRAZABILIDAD7@]^FS
+
+^FT700,1270^A0R,120,120^FH\^FD[@Contramarcas.sCodigo@]^FS
+
+
+^FT236,2153^A0R,67,67^FH\^FDEXPIRATION DATE ^FS
+^FT324,2150^A0R,67,67^FH\^FDFECHA VENCIMIENTO^FS
+^FT150,2157^A0R,67,67^FH\^FD[@Fecha de vencimiento[@IDIOMAVARIABLE@]@]^FS
+^FT42,2179^A0R,100,98^FH\^FD[@FechaVencimiento.dFecha;FFdd/MM/yyyy@]^FS
+
+^FT323,1471^A0R,67,67^FH\^FDFECHA CONGELACION^FS
+^FT152,1475^A0R,67,67^FH\^FD[@Fecha de congelado[@IDIOMAVARIABLE@]@]^FS
+^FT236,1477^A0R,67,67^FH\^FDDATE OF FREEZING^FS
+^FT52,1489^A0R,100,98^FH\^FD[@FechaCongelado.dFecha;FFdd/MM/yyyy@]^FS
+
+^FT325,763^A0R,67,67^FH\^FDFECHA PRODUCCION^FS
+^FT234,762^A0R,67,67^FH\^FDPRODUCTION DATE^FS
+^FT145,757^A0R,67,67^FH\^FD[@Fecha de producción[@IDIOMAVARIABLE@]@]^FS
+^FT41,784^A0R,100,98^FH\^FD[@Identificadores.dFechaProduccion;FFdd/MM/yyyy@]^FS
+
+
+^FO401,32^GB0,2781,10^FS
+^FO677,42^GB0,2076,8^FS
+^FO19,703^GB382,0,7^FS
+^FO24,1410^GB379,0,9^FS
+^FO1673,1055^GB239,0,11^FS
+^FO931,1050^GB238,0,11^FS
+^FO1166,46^GB0,2783,11^FS
+^FO918,43^GB0,2786,8^FS
+^FO1662,35^GB0,2786,11^FS
+^FO10,2115^GB1909,0,12^FS
+^FO1915,35^GB0,2786,11^FS
+
+^FT490,2600^BQN,2,10
+^FDMA,[@Primarias.sCodbar@]^FS
+
+
+
+^PQ[@COPIAS@],0,1,Y^XZ
+</textarea
+                  >
+                  {% endif %}
+                </div>
+                <div class="mb-3">
+                  <label for="variable" class="form-label"
+                    >Variables Disponibles:</label
+                  >
+                  <select class="form-select" name="variable" id="variable">
+                    {% for variable in variables %}
+                    <option value="{{ variable }}">{{ variable }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <button class="btn btn-primary" type="submit">
+                  Generar etiqueta
+                </button>
+              </form>
+            </div>
+            <div class="col-7">
+              <div id="target_etiqueta" class="text-center mt-4"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab de etiquetas existentes -->
+        <div
+          class="tab-pane fade"
+          id="etiquetas"
+          role="tabpanel"
+          aria-labelledby="etiquetas-tab"
+        >
+          <div class="row">
+            <div class="col-5">
+              <form
+                hx-post="{% url 'etiqueta_png' %}"
+                hx-target="#target_etiqueta_existente"
+                hx-swap="innerHTML"
+                id="etiquetasForm"
+              >
+                {% csrf_token %}
+                <div class="mb-3">
+                  <label for="tipo_etiqueta" class="form-label">Seleccione el tipo:</label>
+                  <select
+                    class="form-select"
+                    name="tipo_etiqueta"
+                    id="tipo_etiqueta"
+                    onchange="filtrarEtiquetas()"
+                  >
+                    <option value="">Todos los tipos</option>
+                    {% for tipo in tipos_etiquetas %}
+                    <option value="{{ tipo }}">{{ tipo }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                
+                <div class="mb-3">
+                  <label for="etiqueta_id" class="form-label">Seleccione una etiqueta:</label>
+                  <select
+                    class="form-select"
+                    name="etiqueta_id"
+                    id="etiqueta_id"
+                  >
+                    <option value="">-- Seleccione una etiqueta --</option>
+                    {% if etiquetas %}
+                      {% for etiqueta in etiquetas %}
+                      <option value="{{ etiqueta.id }}" data-tipo="{{ etiqueta.tipo_etiqueta }}">
+                        {{ etiqueta.nombre }} ({{ etiqueta.tipo_etiqueta }})
+                      </option>
+                      {% endfor %}
+                    {% else %}
+                      <option value="">No hay etiquetas disponibles</option>
+                    {% endif %}
+                  </select>
+                </div>
+                
+                <button class="btn btn-primary" type="submit">
+                  Generar etiqueta
+                </button>
+              </form>
+            </div>
+            <div class="col-7">
+              <div
+                id="target_etiqueta_existente"
+                class="text-center mt-4"
+              ></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+      crossorigin="anonymous"
+    ></script>
+      
+    <script>
+      // Función para filtrar las etiquetas según el tipo seleccionado
+      function filtrarEtiquetas() {
+        const tipoSeleccionado = document.getElementById('tipo_etiqueta').value;
+        const selectEtiquetas = document.getElementById('etiqueta_id');
+        const opciones = selectEtiquetas.options;
+        
+        // Reiniciar el select de etiquetas
+        selectEtiquetas.selectedIndex = 0;
+        
+        // Mostrar/ocultar opciones según el tipo seleccionado
+        for (let i = 1; i < opciones.length; i++) {
+          const opcion = opciones[i];
+          const tipoEtiqueta = opcion.getAttribute('data-tipo');
+          
+          if (!tipoSeleccionado || tipoEtiqueta === tipoSeleccionado) {
+            opcion.style.display = '';
+          } else {
+            opcion.style.display = 'none';
+          }
+        }
+      }
+      
+      // Inicializar el filtro cuando la página cargue
+      document.addEventListener('DOMContentLoaded', function() {
+        // Inicializar el filtro
+        filtrarEtiquetas();
+        
+        // Asegurar que el filtro se aplique cuando cambie de pestaña
+        const etiquetasTab = document.getElementById('etiquetas-tab');
+        etiquetasTab.addEventListener('shown.bs.tab', filtrarEtiquetas);
+      });
+    </script>
+  </body>
+</html>

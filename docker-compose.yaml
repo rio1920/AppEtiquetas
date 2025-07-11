@@ -1,0 +1,36 @@
+name: Prueba
+
+services:
+  labelary_app:
+    container_name: labelary
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    restart: unless-stopped
+    networks:
+      - backend
+    depends_on:
+      - db_labelary
+  db_labelary:
+    env_file:
+      - .env
+    image: postgres:latest
+    container_name: labelary_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: labelary
+    ports:
+      - "${DB_HOST_PORT}:${POSTGRES_PORT}"
+    volumes:
+      - db_labelary:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - backend
+
+volumes:
+  db_labelary:
+networks:
+  backend:
