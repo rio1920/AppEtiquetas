@@ -479,6 +479,7 @@
       let etiquetaActualId = null;
       let timeoutManual = null; // Variable para controlar el debounce en edición manual
       let timeoutExistente = null; // Variable para controlar el debounce en etiquetas existentes
+      let timeoutNombre = null; // Variable para controlar el debounce específico del campo nombre
 
       // Función para actualizar la UI cuando se carga una etiqueta
       function actualizarUIEtiquetaCargada(mostrar) {
@@ -957,13 +958,19 @@
                 return;
               }
 
+              // Obtener el nombre actual antes de reemplazar el contenido
+              const nombreActual = document.getElementById("nombre_etiqueta_actual").value.trim() || "Sin nombre";
+              
               // Conservar el div de configuración y agregar la imagen
               const configInfo = document.getElementById(
                 "config_info_existente"
               ).outerHTML;
               document.getElementById("target_etiqueta_existente").innerHTML =
                 configInfo + html;
-              console.log("Previsualización actualizada correctamente");
+              
+              // Asegurarse de que el nombre mostrado sea el actualizado
+              actualizarInfoEtiqueta();
+              console.log("Previsualización actualizada correctamente con nombre:", nombreActual);
             })
             .catch((error) => {
               console.error("Error en fetch de generarEtiqueta:", error);
@@ -1295,7 +1302,7 @@
             { id: "impresora_id", evento: "change" },
             { id: "insumo_id", evento: "change" },
             { id: "rotacion_id", evento: "change" },
-            { id: "nombre_etiqueta", evento: "input" },
+            // Quitamos el campo nombre_etiqueta de aquí ya que lo manejaremos por separado
             { id: "tipo_etiqueta_manual", evento: "change" },
           ];
 
@@ -1311,6 +1318,24 @@
               console.warn(`⚠️ No se pudo agregar listener para ${item.id}`);
             }
           });
+          
+          // Agregar evento especial para el campo de nombre con debounce más largo
+          const nombreEtiquetaEl = document.getElementById("nombre_etiqueta");
+          if (nombreEtiquetaEl) {
+            nombreEtiquetaEl.addEventListener("input", function() {
+              // Limpiar el timeout anterior si existe
+              if (timeoutNombre) clearTimeout(timeoutNombre);
+              
+              // Establecer un nuevo timeout con 300ms de espera
+              timeoutNombre = setTimeout(() => {
+                console.log("🔄 Actualizando previsualización después de cambio en nombre");
+                actualizarPrevisualizacionManual();
+              }, 800); // 800ms de debounce para dar más tiempo para escribir
+            });
+            console.log(`✅ Listener con debounce especial agregado para nombre_etiqueta`);
+          } else {
+            console.warn(`⚠️ No se pudo agregar listener para nombre_etiqueta`);
+          }
 
           // Configurar el selector de etiquetas
           const etiquetaIdSelect = document.getElementById("etiqueta_id");
@@ -1372,32 +1397,42 @@
             "impresora_id_existente",
             "insumo_id_existente",
             "rotacion_id_existente",
-            "nombre_etiqueta_actual", // Agregamos el campo del nombre
+            // Quitamos el campo nombre_etiqueta_actual para manejarlo por separado
           ];
 
           elementosExistentes.forEach((id) => {
             const el = document.getElementById(id);
             if (el) {
-              // Usar el evento "input" para el campo de nombre y "change" para los demás
-              const evento =
-                id === "nombre_etiqueta_actual" ? "input" : "change";
-              el.addEventListener(evento, () => {
+              el.addEventListener("change", () => {
                 console.log(`🔄 Cambio en ${id}, generando etiqueta`);
-
-                // Si es el campo de nombre, actualizar también la información mostrada
-                if (id === "nombre_etiqueta_actual") {
-                  actualizarInfoEtiqueta();
-                }
-
                 generarEtiqueta(true);
               });
-              console.log(
-                `✅ Listener agregado para ${id} con evento ${evento}`
-              );
+              console.log(`✅ Listener agregado para ${id} con evento change`);
             } else {
               console.warn(`⚠️ No se pudo agregar listener para ${id}`);
             }
           });
+          
+          // Manejar el campo de nombre por separado con un debounce más largo
+          const nombreEtiquetaActualEl = document.getElementById("nombre_etiqueta_actual");
+          if (nombreEtiquetaActualEl) {
+            nombreEtiquetaActualEl.addEventListener("input", function() {
+              // Limpiar el timeout anterior si existe
+              if (timeoutNombre) clearTimeout(timeoutNombre);
+              
+              // Actualizar inmediatamente solo la parte visual del nombre
+              actualizarInfoEtiqueta();
+              
+              // Establecer un nuevo timeout con 800ms de espera para la generación de etiqueta
+              timeoutNombre = setTimeout(() => {
+                console.log("🔄 Generando etiqueta después de cambio en nombre");
+                generarEtiqueta(true);
+              }, 800); // 800ms de debounce para dar más tiempo para escribir
+            });
+            console.log(`✅ Listener con debounce especial agregado para nombre_etiqueta_actual`);
+          } else {
+            console.warn(`⚠️ No se pudo agregar listener para nombre_etiqueta_actual`);
+          }
 
           // Cargar la previsualización inicial para el modo manual inmediatamente
           console.log("Cargando previsualización inicial para modo manual");
@@ -1770,9 +1805,21 @@
                 return;
               }
 
-              const nombreEtiqueta = etiquetaOption.textContent
-                .split("(")[0]
-                .trim();
+              // Obtener el nombre actual del input si está disponible
+              let nombreEtiqueta;
+              const nombreInput = document.getElementById("nombre_etiqueta_actual");
+              if (nombreInput && nombreInput.value.trim()) {
+                // Usar el valor editado por el usuario si existe
+                nombreEtiqueta = nombreInput.value.trim();
+                console.log("Usando nombre editado por el usuario:", nombreEtiqueta);
+              } else {
+                // Si no hay valor editado, usar el original de la etiqueta
+                nombreEtiqueta = etiquetaOption.textContent
+                  .split("(")[0]
+                  .trim();
+                console.log("Usando nombre original de la etiqueta:", nombreEtiqueta);
+              }
+              
               const tipoEtiqueta =
                 etiquetaOption.getAttribute("data-tipo") || "No especificado";
 
@@ -1822,9 +1869,21 @@
                 if (etiquetaSelect && etiquetaSelect.selectedIndex > 0) {
                   const etiquetaOption =
                     etiquetaSelect.options[etiquetaSelect.selectedIndex];
-                  const nombreEtiqueta = etiquetaOption.textContent
-                    .split("(")[0]
-                    .trim();
+                  // Obtener el nombre actual del input si está disponible
+                  let nombreEtiqueta;
+                  const nombreInput = document.getElementById("nombre_etiqueta_actual");
+                  if (nombreInput && nombreInput.value.trim()) {
+                    // Usar el valor editado por el usuario si existe
+                    nombreEtiqueta = nombreInput.value.trim();
+                    console.log("Usando nombre editado por el usuario (desde selectores):", nombreEtiqueta);
+                  } else {
+                    // Si no hay valor editado, usar el original de la etiqueta
+                    nombreEtiqueta = etiquetaOption.textContent
+                      .split("(")[0]
+                      .trim();
+                    console.log("Usando nombre original de la etiqueta (desde selectores):", nombreEtiqueta);
+                  }
+                  
                   const tipoEtiqueta =
                     etiquetaOption.getAttribute("data-tipo") ||
                     "No especificado";
@@ -1890,9 +1949,13 @@
               "nombre_etiqueta_actual"
             );
             if (nombreEtiquetaInput) {
-              nombreEtiquetaInput.value = etiquetaOption.textContent.trim();
+              // Extraer solo el nombre, eliminando el identificador entre paréntesis si existe
+              const nombreLimpio = etiquetaOption.textContent.split("(")[0].trim();
+              nombreEtiquetaInput.value = nombreLimpio;
               console.log(
-                "Nombre de etiqueta cargado:",
+                "Nombre de etiqueta cargado (limpio):",
+                nombreLimpio,
+                "| Original:",
                 etiquetaOption.textContent.trim()
               );
             } else {
@@ -2135,13 +2198,19 @@
               return response.text();
             })
             .then((html) => {
+              // Obtener el nombre actual antes de reemplazar el contenido
+              const nombreActual = document.getElementById("nombre_etiqueta_actual").value.trim() || "Sin nombre";
+              
               // Conservar el div de configuración y agregar la imagen
               const configInfo = document.getElementById(
                 "config_info_existente"
               ).outerHTML;
               document.getElementById("target_etiqueta_existente").innerHTML =
                 configInfo + html;
-              console.log("Previsualización inmediata completada");
+              
+              // Asegurarse de que el nombre mostrado sea el actualizado
+              actualizarInfoEtiqueta();
+              console.log("Previsualización inmediata completada con nombre:", nombreActual);
             })
             .catch((error) => {
               console.error("Error en previsualización inmediata:", error);
@@ -2191,6 +2260,8 @@
 
           // Actualizar solo la parte del nombre en la información mostrada
           if (infoActual.includes("<strong>Nombre:</strong>")) {
+            // Usar un debounce visual más corto para actualizar inmediatamente
+            // la visualización del nombre sin esperar a generar la etiqueta
             const nombreActual =
               nombreEtiquetaInput.value.trim() || "Sin nombre";
 
@@ -2202,9 +2273,21 @@
 
             configInfoEl.innerHTML = nuevoInfo;
             console.log(
-              "Información de etiqueta actualizada con el nuevo nombre:",
+              "Información visual de etiqueta actualizada con el nombre:",
               nombreActual
             );
+            
+            // También actualizamos la referencia en el select si existe
+            try {
+              const etiquetaSelect = document.getElementById("etiqueta_id");
+              if (etiquetaSelect && etiquetaSelect.selectedIndex > 0 && etiquetaActualId) {
+                // Solo para depuración, no afecta la funcionalidad
+                console.log("Nombre actualizado en input:", nombreActual, 
+                            "| Original en select:", etiquetaSelect.options[etiquetaSelect.selectedIndex].textContent);
+              }
+            } catch (selectErr) {
+              console.warn("No se pudo actualizar referencia en select:", selectErr);
+            }
           }
         } catch (err) {
           console.error("Error al actualizar información de etiqueta:", err);
