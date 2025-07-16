@@ -22,11 +22,42 @@
 
     <title>Generador de Etiquetas</title>
     <style>
+      /* Estilos responsivos para imágenes */
       #target_etiqueta img,
       #target_etiqueta_existente img {
         max-width: 100%;
         height: auto;
         max-height: 550px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        border-radius: 8px;
+      }
+
+      /* Mejoras responsivas */
+      .form-control,
+      .form-select {
+        margin-bottom: 0.5rem;
+      }
+
+      /* Ajustes para dispositivos móviles */
+      @media (max-width: 768px) {
+        .container {
+          padding-left: 1rem;
+          padding-right: 1rem;
+        }
+
+        h1 {
+          font-size: 1.75rem;
+          margin: 1rem 0;
+        }
+
+        .btn {
+          width: 100%;
+          margin-bottom: 0.5rem;
+        }
+
+        .d-flex.gap-2 {
+          flex-direction: column;
+        }
       }
 
       /* Estilos para el switch del modo oscuro */
@@ -67,13 +98,19 @@
         <i class="bi bi-sun-fill" id="theme-icon"></i>
       </button>
     </div>
-    <div class="container">
-      <h1 class="my-4">Sistema de Generación de Etiquetas</h1>
+    <div class="container px-4">
+      <h1 class="my-4 text-center text-lg-start">
+        Sistema de Generación de Etiquetas
+      </h1>
 
-      <ul class="nav nav-tabs mb-4" id="myTab" role="tablist">
+      <ul
+        class="nav nav-tabs mb-4 flex-column flex-sm-row"
+        id="myTab"
+        role="tablist"
+      >
         <li class="nav-item" role="presentation">
           <button
-            class="nav-link active"
+            class="nav-link active w-100 text-center"
             id="manual-tab"
             data-bs-toggle="tab"
             data-bs-target="#manual"
@@ -82,12 +119,12 @@
             aria-controls="manual"
             aria-selected="true"
           >
-            Edición Manual
+            <i class="bi bi-pencil-square"></i> Edición Manual
           </button>
         </li>
         <li class="nav-item" role="presentation">
           <button
-            class="nav-link"
+            class="nav-link w-100 text-center"
             id="etiquetas-tab"
             data-bs-toggle="tab"
             data-bs-target="#etiquetas"
@@ -96,7 +133,7 @@
             aria-controls="etiquetas"
             aria-selected="false"
           >
-            Etiquetas Existentes
+            <i class="bi bi-card-list"></i> Etiquetas Existentes
           </button>
         </li>
       </ul>
@@ -110,7 +147,7 @@
           aria-labelledby="manual-tab"
         >
           <div class="row">
-            <div class="col-6">
+            <div class="col-12 col-lg-6">
               <form
                 hx-post="{% url 'etiqueta_png' %}"
                 hx-target="#target_etiqueta"
@@ -143,7 +180,7 @@
                   {% endif %}
                 </div>
                 <div class="row">
-                  <div class="col-md-6">
+                  <div class="col-12 col-sm-6">
                     <div class="mb-3">
                       <label for="variable" class="form-label"
                         >Variables Disponibles:</label
@@ -157,7 +194,7 @@
                   </div>
 
                   <!-- Nueva sección para la creación de etiquetas -->
-                  <div class="col-md-6">
+                  <div class="col-12 col-sm-6">
                     <div class="mb-3">
                       <label for="nombre_etiqueta" class="form-label"
                         >Nombre de etiqueta:</label
@@ -172,7 +209,7 @@
                     </div>
                   </div>
 
-                  <div class="col-md-4">
+                  <div class="col-12 col-sm-4">
                     <div class="mb-3">
                       <label for="tipo_etiqueta_manual" class="form-label"
                         >Tipo:</label
@@ -189,7 +226,7 @@
                     </div>
                   </div>
 
-                  <div class="col-md-4">
+                  <div class="col-12 col-sm-4">
                     <div class="mb-3">
                       <label for="impresora_id" class="form-label"
                         >Impresora:</label
@@ -208,7 +245,7 @@
                     </div>
                   </div>
 
-                  <div class="col-md-4">
+                  <div class="col-12 col-sm-4">
                     <div class="mb-3">
                       <label for="insumo_id" class="form-label">Tamaño:</label>
                       <select
@@ -225,7 +262,7 @@
                     </div>
                   </div>
 
-                  <div class="col-md-4">
+                  <div class="col-12 col-sm-4">
                     <div class="mb-3">
                       <label for="rotacion_id" class="form-label"
                         >Rotación:</label
@@ -245,19 +282,19 @@
                   </div>
                 </div>
 
-                <div class="d-flex gap-2">
+                <div class="d-grid gap-2 d-md-flex justify-content-md-start">
                   <button
                     class="btn btn-success"
                     type="button"
                     onclick="guardarNuevaEtiqueta()"
                   >
-                    Crear etiqueta
+                    <i class="bi bi-save"></i> Crear etiqueta
                   </button>
                 </div>
               </form>
             </div>
-            <div class="col-6">
-              <div id="target_etiqueta" class="text-center mt-4">
+            <div class="col-12 col-lg-6 mt-4 mt-lg-0">
+              <div id="target_etiqueta" class="text-center">
                 <div class="alert alert-info mb-3" id="config_info_manual">
                   Seleccione impresora, tamaño y rotación para previsualizar
                 </div>
@@ -274,7 +311,7 @@
           aria-labelledby="etiquetas-tab"
         >
           <div class="row">
-            <div class="col-6">
+            <div class="col-12 col-lg-6">
               <form id="etiquetasForm">
                 {% csrf_token %}
                 <div class="mb-3">
@@ -332,7 +369,7 @@
                   id="configExistenteContainer"
                   style="display: none"
                 >
-                  <div class="col-md-4">
+                  <div class="col-12 col-sm-4">
                     <div class="mb-3">
                       <label for="impresora_id_existente" class="form-label"
                         >Impresora:</label
@@ -351,7 +388,7 @@
                     </div>
                   </div>
 
-                  <div class="col-md-4">
+                  <div class="col-12 col-sm-4">
                     <div class="mb-3">
                       <label for="insumo_id_existente" class="form-label"
                         >Tamaño:</label
@@ -370,7 +407,7 @@
                     </div>
                   </div>
 
-                  <div class="col-md-4">
+                  <div class="col-12 col-sm-4">
                     <div class="mb-3">
                       <label for="rotacion_id_existente" class="form-label"
                         >Rotación:</label
@@ -407,7 +444,7 @@
                   />
                 </div>
 
-                <div class="d-flex gap-2">
+                <div class="d-grid gap-2 d-md-flex justify-content-md-start">
                   <button
                     class="btn btn-success"
                     type="button"
@@ -415,13 +452,13 @@
                     onclick="guardarZPL()"
                     style="display: none"
                   >
-                    Guardar cambios
+                    <i class="bi bi-save"></i> Guardar cambios
                   </button>
                 </div>
               </form>
             </div>
-            <div class="col-6">
-              <div id="target_etiqueta_existente" class="text-center mt-4">
+            <div class="col-12 col-lg-6 mt-4 mt-lg-0">
+              <div id="target_etiqueta_existente" class="text-center">
                 <div class="alert alert-info mb-3" id="config_info_existente">
                   Seleccione una etiqueta para previsualizar
                 </div>
@@ -850,11 +887,11 @@
 
           // Mostrar spinner de carga mientras se genera la etiqueta
           const spinnerHTML = `
-            <div id="spinner-existente" class="text-center my-3">
+            <div id="spinner-existente" class="text-center my-3 py-4">
               <div class="spinner-border text-primary" role="status">
                 <span class="visually-hidden">Generando etiqueta...</span>
               </div>
-              <div class="mt-2">Generando etiqueta...</div>
+              <div class="mt-3 fw-bold">Generando etiqueta...</div>
             </div>
           `;
           document.getElementById("target_etiqueta_existente").innerHTML =
@@ -1022,11 +1059,11 @@
 
           // Mostrar spinner mientras se carga la etiqueta
           const spinnerHTML = `
-            <div id="spinner-preview" class="text-center my-3">
+            <div id="spinner-preview" class="text-center my-3 py-4">
               <div class="spinner-border text-primary" role="status">
                 <span class="visually-hidden">Cargando etiqueta...</span>
               </div>
-              <div class="mt-2">Cargando etiqueta...</div>
+              <div class="mt-3 fw-bold">Cargando etiqueta...</div>
             </div>
           `;
           document.getElementById("target_etiqueta").innerHTML =
@@ -1284,11 +1321,11 @@
               if (etiquetaId) {
                 // Mostrar spinner de carga
                 const spinnerHTML = `
-                  <div id="spinner-carga-etiqueta" class="text-center my-3">
+                  <div id="spinner-carga-etiqueta" class="text-center my-3 py-4">
                     <div class="spinner-border text-primary" role="status">
                       <span class="visually-hidden">Cargando etiqueta...</span>
                     </div>
-                    <div class="mt-2">Cargando etiqueta...</div>
+                    <div class="mt-3 fw-bold">Cargando etiqueta...</div>
                   </div>
                 `;
                 document.getElementById("target_etiqueta_existente").innerHTML =
@@ -1528,11 +1565,11 @@
 
             // Mostrar spinner de carga mientras se genera la previsualización
             const spinnerHTML = `
-              <div id="spinner-manual" class="text-center my-3">
+              <div id="spinner-manual" class="text-center my-3 py-4">
                 <div class="spinner-border text-primary" role="status">
                   <span class="visually-hidden">Generando previsualización...</span>
                 </div>
-                <div class="mt-2">Generando previsualización...</div>
+                <div class="mt-3 fw-bold">Generando previsualización...</div>
               </div>
             `;
             targetEl.innerHTML = configInfoEl.outerHTML + spinnerHTML;
@@ -2070,11 +2107,11 @@
 
           // Mostrar spinner de carga mientras se genera la etiqueta
           const spinnerHTML = `
-            <div id="spinner-preview-inmediato" class="text-center my-3">
+            <div id="spinner-preview-inmediato" class="text-center my-3 py-4">
               <div class="spinner-border text-primary" role="status">
                 <span class="visually-hidden">Generando previsualización...</span>
               </div>
-              <div class="mt-2">Generando previsualización...</div>
+              <div class="mt-3 fw-bold">Generando previsualización...</div>
             </div>
           `;
           document.getElementById("target_etiqueta_existente").innerHTML =
