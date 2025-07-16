@@ -102,7 +102,7 @@
     <!-- Contenedor para los toasts - margen derecho -->
     <div
       class="toast-container position-fixed top-0 end-0 p-3"
-      style="z-index: 1100; margin-top: 20px; width: 350px;"
+      style="z-index: 1100; margin-top: 20px; width: 350px"
       id="toastContainer"
     ></div>
     <div class="container px-4">
@@ -1284,10 +1284,10 @@
 
               // Limpiar el formulario
               document.getElementById("nombre_etiqueta").value = "";
-              
+
               // Actualizar la información de configuración para reflejar "Sin nombre"
               actualizarInfoConfigManual();
-              
+
               // También actualizar la previsualización para mostrar la configuración actualizada
               visualizarEtiquetaCompleta();
             } else {
@@ -2516,7 +2516,7 @@
       function mostrarToast(mensaje, tipo = "success", duracion = 4000) {
         // Crear un ID único para el toast
         const toastId = `toast-${Date.now()}`;
-        
+
         // Determinar los colores según el tipo
         let bgColor, iconClass, borderClass;
         switch (tipo) {
@@ -2546,7 +2546,7 @@
             iconClass = "bi-bell-fill";
             borderClass = "border-secondary";
         }
-        
+
         // Crear el HTML del toast con diseño mejorado y animaciones
         const toastHTML = `
           <div id="${toastId}" class="toast ${bgColor} border-3 ${borderClass} shadow-lg rounded-3" 
@@ -2561,33 +2561,33 @@
             </div>
           </div>
         `;
-        
+
         // Añadir el toast al contenedor
         document
           .getElementById("toastContainer")
           .insertAdjacentHTML("beforeend", toastHTML);
-        
+
         // Inicializar y mostrar el toast
         const toastElement = document.getElementById(toastId);
         const bsToast = new bootstrap.Toast(toastElement, {
           autohide: true,
           delay: duracion,
         });
-        
+
         // Aplicar animación de entrada personalizada
         setTimeout(() => {
           toastElement.style.opacity = "1";
           toastElement.style.transform = "translateY(0)";
         }, 10);
-        
+
         bsToast.show();
-        
+
         // Añadir animación de salida antes de eliminar
-        toastElement.addEventListener('hide.bs.toast', function () {
+        toastElement.addEventListener("hide.bs.toast", function () {
           toastElement.style.opacity = "0";
           toastElement.style.transform = "translateY(-20px)";
         });
-        
+
         // Eliminar el toast del DOM cuando se oculte
         toastElement.addEventListener("hidden.bs.toast", function () {
           toastElement.remove();
