@@ -36,6 +36,11 @@ class Etiqueta(models.Model):
     insumo = models.ForeignKey(Insumo, on_delete=models.CASCADE)
     rotacion = models.ForeignKey(Rotacion, on_delete=models.CASCADE)
     
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['tipo_etiqueta', 'nombre'], name='unique_nombre_por_tipo')
+        ]
+    
     def __str__(self):
         return self.nombre
     

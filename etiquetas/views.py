@@ -196,8 +196,15 @@ def actualizar_zpl(request):
             
             # Actualizar el nombre si viene en la solicitud
             if nombre:
+                # Verificar si ya existe otra etiqueta con el mismo nombre y tipo (excluyendo esta misma)
+                if Etiqueta.objects.filter(nombre=nombre, tipo_etiqueta=etiqueta.tipo_etiqueta).exclude(id=etiqueta_id).exists():
+                    return JsonResponse({
+                        'success': False, 
+                        'error': f'Ya existe otra etiqueta con el nombre "{nombre}" para el tipo "{etiqueta.tipo_etiqueta}".',
+                        'errorType': 'duplicate'
+                    }, status=400)
                 etiqueta.nombre = nombre
-                
+            
             etiqueta.save()
             
             return JsonResponse({'success': True})
@@ -222,6 +229,14 @@ def crear_etiqueta(request):
             if not nombre or not tipo_etiqueta or not impresora_id or not insumo_id or not rotacion_id or not contenido_zpl:
                 return JsonResponse({'success': False, 'error': 'Faltan datos obligatorios'}, status=400)
             
+            # Verificar si ya existe una etiqueta con el mismo nombre y tipo
+            if Etiqueta.objects.filter(nombre=nombre, tipo_etiqueta=tipo_etiqueta).exists():
+                return JsonResponse({
+                    'success': False, 
+                    'error': f'Ya existe una etiqueta con el nombre "{nombre}" para el tipo "{tipo_etiqueta}".',
+                    'errorType': 'duplicate'
+                }, status=400)
+            
             # Obtener los objetos relacionados
             impresora = get_object_or_404(Impresora, id=impresora_id)
             insumo = get_object_or_404(Insumo, id=insumo_id)
@@ -237,7 +252,7 @@ def crear_etiqueta(request):
                 contenido_zpl=contenido_zpl
             )
             
-            return JsonResponse({'success': True, 'etiqueta_id': etiqueta.id})
+            return JsonResponse({'success': True})
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)}, status=500)
     else:

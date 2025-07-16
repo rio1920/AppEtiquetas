@@ -98,6 +98,13 @@
         <i class="bi bi-sun-fill" id="theme-icon"></i>
       </button>
     </div>
+
+    <!-- Contenedor para los toasts - margen derecho -->
+    <div
+      class="toast-container position-fixed top-0 end-0 p-3"
+      style="z-index: 1100; margin-top: 20px; width: 350px;"
+      id="toastContainer"
+    ></div>
     <div class="container px-4">
       <h1 class="my-4 text-center text-lg-start">
         Sistema de Generación de Etiquetas
@@ -797,7 +804,11 @@
         try {
           if (!etiquetaActualId) {
             if (!isPreview) {
-              alert("Por favor, seleccione una etiqueta");
+              mostrarToast(
+                "Por favor, seleccione una etiqueta",
+                "warning",
+                4000
+              );
             }
             console.warn("No hay etiqueta seleccionada");
             return;
@@ -959,18 +970,24 @@
               }
 
               // Obtener el nombre actual antes de reemplazar el contenido
-              const nombreActual = document.getElementById("nombre_etiqueta_actual").value.trim() || "Sin nombre";
-              
+              const nombreActual =
+                document
+                  .getElementById("nombre_etiqueta_actual")
+                  .value.trim() || "Sin nombre";
+
               // Conservar el div de configuración y agregar la imagen
               const configInfo = document.getElementById(
                 "config_info_existente"
               ).outerHTML;
               document.getElementById("target_etiqueta_existente").innerHTML =
                 configInfo + html;
-              
+
               // Asegurarse de que el nombre mostrado sea el actualizado
               actualizarInfoEtiqueta();
-              console.log("Previsualización actualizada correctamente con nombre:", nombreActual);
+              console.log(
+                "Previsualización actualizada correctamente con nombre:",
+                nombreActual
+              );
             })
             .catch((error) => {
               console.error("Error en fetch de generarEtiqueta:", error);
@@ -978,7 +995,11 @@
                 "config_info_existente"
               ).innerHTML = `<div class="alert alert-danger">Error al generar la etiqueta: ${error.message}</div>`;
               if (!isPreview) {
-                alert("Error al generar la etiqueta: " + error.message);
+                mostrarToast(
+                  "Error al generar la etiqueta: " + error.message,
+                  "error",
+                  4000
+                );
               }
             });
         } catch (err) {
@@ -987,7 +1008,11 @@
             "config_info_existente"
           ).innerHTML = `<div class="alert alert-danger">Error general: ${err.message}</div>`;
           if (!isPreview) {
-            alert("Error al procesar la etiqueta: " + err.message);
+            mostrarToast(
+              "Error al procesar la etiqueta: " + err.message,
+              "error",
+              4000
+            );
           }
         }
       }
@@ -995,15 +1020,26 @@
       // Función para guardar los cambios del ZPL en la base de datos
       function guardarZPL() {
         if (!etiquetaActualId) {
-          alert("Por favor, seleccione una etiqueta");
+          mostrarToast("Por favor, seleccione una etiqueta", "warning", 4000);
           return;
         }
 
         const zpl = document.getElementById("zpl_editor").value;
-        const nombre = document.getElementById("nombre_etiqueta_actual").value;
+        const nombreInput = document.getElementById("nombre_etiqueta_actual");
+        const nombre = nombreInput.value.trim();
         const csrfToken = document.querySelector(
           "[name=csrfmiddlewaretoken]"
         ).value;
+
+        // Validar que el nombre esté completo
+        if (
+          !validarCampoRequerido(
+            nombreInput,
+            "El nombre de la etiqueta es obligatorio"
+          )
+        ) {
+          return;
+        }
 
         // Crear un formulario temporal para enviar los datos
         const formData = new FormData();
@@ -1018,23 +1054,70 @@
           body: formData,
         })
           .then((response) => {
-            if (!response.ok) {
-              throw new Error("Error al actualizar el ZPL");
-            }
-            return response.json();
+            // Siempre intentar obtener el JSON, incluso en caso de error HTTP
+            return response.json().then((data) => {
+              if (!response.ok) {
+                // Si tenemos un JSON con error, usarlo para el mensaje de error
+                throw {
+                  message: data.error || "Error al actualizar el ZPL",
+                  errorType: data.errorType,
+                  data: data,
+                };
+              }
+              return data;
+            });
           })
           .then((data) => {
             if (data.success) {
-              alert("ZPL actualizado correctamente");
+              // Mostrar toast de éxito
+              mostrarToast("ZPL actualizado correctamente", "success", 4000);
+
               // Actualizar la previsualización con los cambios guardados
               generarEtiqueta(true);
             } else {
-              alert("Error al actualizar el ZPL: " + data.error);
+              mostrarToast(
+                "Error al actualizar el ZPL: " + data.error,
+                "error",
+                4000
+              );
             }
           })
           .catch((error) => {
             console.error("Error:", error);
-            alert("Error al actualizar el ZPL");
+
+            // Verificar si es un error de duplicado
+            const errorMsg = error.message || error.toString();
+            if (
+              error.errorType === "duplicate" ||
+              errorMsg.includes("Ya existe otra etiqueta con el nombre")
+            ) {
+              // Mostrar toast de error por duplicado
+              mostrarToast(errorMsg, "error", 4000);
+
+              // Resaltar el campo de nombre
+              nombreInput.classList.add("is-invalid");
+              let feedbackEl = nombreInput.nextElementSibling;
+              if (
+                !feedbackEl ||
+                !feedbackEl.classList.contains("invalid-feedback")
+              ) {
+                feedbackEl = document.createElement("div");
+                feedbackEl.className = "invalid-feedback";
+                feedbackEl.textContent =
+                  "Ya existe otra etiqueta con este nombre para el mismo tipo. Por favor use otro nombre.";
+                nombreInput.parentNode.insertBefore(
+                  feedbackEl,
+                  nombreInput.nextSibling
+                );
+              }
+            } else {
+              // Error genérico
+              mostrarToast(
+                "Error al actualizar el ZPL: " + error.message,
+                "error",
+                4000
+              );
+            }
           });
       }
 
@@ -1055,8 +1138,10 @@
 
           // Validar que tengamos los datos mínimos necesarios
           if (!impresoraId || !insumoId || !rotacionId || !zpl) {
-            alert(
-              "Por favor seleccione impresora, insumo, rotación e ingrese código ZPL"
+            mostrarToast(
+              "Por favor seleccione impresora, insumo, rotación e ingrese código ZPL",
+              "warning",
+              4000
             );
             return;
           }
@@ -1107,18 +1192,27 @@
             })
             .catch((error) => {
               console.error("Error en visualizarEtiquetaCompleta:", error);
-              alert("Error al visualizar la etiqueta: " + error.message);
+              mostrarToast(
+                "Error al visualizar la etiqueta: " + error.message,
+                "error",
+                4000
+              );
             });
         } catch (err) {
           console.error("Error general en visualizarEtiquetaCompleta:", err);
-          alert("Error al procesar la visualización: " + err.message);
+          mostrarToast(
+            "Error al procesar la visualización: " + err.message,
+            "error",
+            4000
+          );
         }
       }
 
       // Función para guardar una nueva etiqueta desde la edición manual
       function guardarNuevaEtiqueta() {
         // Obtener los valores de los campos
-        const nombre = document.getElementById("nombre_etiqueta").value;
+        const nombreInput = document.getElementById("nombre_etiqueta");
+        const nombre = nombreInput.value.trim();
         const tipoEtiqueta = document.getElementById(
           "tipo_etiqueta_manual"
         ).value;
@@ -1130,16 +1224,24 @@
           "[name=csrfmiddlewaretoken]"
         ).value;
 
-        // Validar que los campos obligatorios estén completos
+        // Validar que el nombre esté completo (único campo requerido)
         if (
-          !nombre ||
-          !tipoEtiqueta ||
-          !impresoraId ||
-          !insumoId ||
-          !rotacionId ||
-          !zpl
+          !validarCampoRequerido(
+            nombreInput,
+            "El nombre de la etiqueta es obligatorio"
+          )
         ) {
-          alert("Por favor complete todos los campos obligatorios");
+          return;
+        }
+
+        // Validar que los demás campos obligatorios estén completos
+        if (!tipoEtiqueta || !impresoraId || !insumoId || !rotacionId || !zpl) {
+          // Para estos campos usamos el toast
+          mostrarToast(
+            "Por favor complete todos los campos obligatorios",
+            "warning",
+            4000
+          );
           return;
         }
 
@@ -1162,25 +1264,70 @@
           body: formData,
         })
           .then((response) => {
-            if (!response.ok) {
-              throw new Error("Error al crear la etiqueta");
-            }
-            return response.json();
+            // Siempre intentar obtener el JSON, incluso en caso de error HTTP
+            return response.json().then((data) => {
+              if (!response.ok) {
+                // Si tenemos un JSON con error, usarlo para el mensaje de error
+                throw {
+                  message: data.error || "Error al crear la etiqueta",
+                  errorType: data.errorType,
+                  data: data,
+                };
+              }
+              return data;
+            });
           })
           .then((data) => {
             if (data.success) {
-              alert(
-                "Etiqueta creada correctamente con ID: " + data.etiqueta_id
-              );
-              // Opcional: Limpiar el formulario o redirigir a la etiqueta creada
+              // Mostrar toast de éxito
+              mostrarToast(`Etiqueta creada correctamente.`, "success", 4000);
+
+              // Limpiar el formulario
               document.getElementById("nombre_etiqueta").value = "";
             } else {
-              alert("Error al crear la etiqueta: " + data.error);
+              mostrarToast(
+                "Error al crear la etiqueta: " + data.error,
+                "error",
+                4000
+              );
             }
           })
           .catch((error) => {
             console.error("Error:", error);
-            alert("Error al crear la etiqueta");
+
+            // Verificar si es un error de duplicado
+            const errorMsg = error.message || error.toString();
+            if (
+              error.errorType === "duplicate" ||
+              errorMsg.includes("Ya existe una etiqueta con el nombre")
+            ) {
+              // Mostrar toast de error por duplicado
+              mostrarToast(errorMsg, "error", 4000);
+
+              // Resaltar el campo de nombre
+              nombreInput.classList.add("is-invalid");
+              let feedbackEl = nombreInput.nextElementSibling;
+              if (
+                !feedbackEl ||
+                !feedbackEl.classList.contains("invalid-feedback")
+              ) {
+                feedbackEl = document.createElement("div");
+                feedbackEl.className = "invalid-feedback";
+                feedbackEl.textContent =
+                  "Ya existe una etiqueta con este nombre para el tipo seleccionado. Por favor use otro nombre.";
+                nombreInput.parentNode.insertBefore(
+                  feedbackEl,
+                  nombreInput.nextSibling
+                );
+              }
+            } else {
+              // Error genérico
+              mostrarToast(
+                "Error al crear la etiqueta: " + error.message,
+                "error",
+                4000
+              );
+            }
           });
       }
 
@@ -1318,21 +1465,25 @@
               console.warn(`⚠️ No se pudo agregar listener para ${item.id}`);
             }
           });
-          
+
           // Agregar evento especial para el campo de nombre con debounce más largo
           const nombreEtiquetaEl = document.getElementById("nombre_etiqueta");
           if (nombreEtiquetaEl) {
-            nombreEtiquetaEl.addEventListener("input", function() {
+            nombreEtiquetaEl.addEventListener("input", function () {
               // Limpiar el timeout anterior si existe
               if (timeoutNombre) clearTimeout(timeoutNombre);
-              
+
               // Establecer un nuevo timeout con 300ms de espera
               timeoutNombre = setTimeout(() => {
-                console.log("🔄 Actualizando previsualización después de cambio en nombre");
+                console.log(
+                  "🔄 Actualizando previsualización después de cambio en nombre"
+                );
                 actualizarPrevisualizacionManual();
               }, 800); // 800ms de debounce para dar más tiempo para escribir
             });
-            console.log(`✅ Listener con debounce especial agregado para nombre_etiqueta`);
+            console.log(
+              `✅ Listener con debounce especial agregado para nombre_etiqueta`
+            );
           } else {
             console.warn(`⚠️ No se pudo agregar listener para nombre_etiqueta`);
           }
@@ -1412,26 +1563,34 @@
               console.warn(`⚠️ No se pudo agregar listener para ${id}`);
             }
           });
-          
+
           // Manejar el campo de nombre por separado con un debounce más largo
-          const nombreEtiquetaActualEl = document.getElementById("nombre_etiqueta_actual");
+          const nombreEtiquetaActualEl = document.getElementById(
+            "nombre_etiqueta_actual"
+          );
           if (nombreEtiquetaActualEl) {
-            nombreEtiquetaActualEl.addEventListener("input", function() {
+            nombreEtiquetaActualEl.addEventListener("input", function () {
               // Limpiar el timeout anterior si existe
               if (timeoutNombre) clearTimeout(timeoutNombre);
-              
+
               // Actualizar inmediatamente solo la parte visual del nombre
               actualizarInfoEtiqueta();
-              
+
               // Establecer un nuevo timeout con 800ms de espera para la generación de etiqueta
               timeoutNombre = setTimeout(() => {
-                console.log("🔄 Generando etiqueta después de cambio en nombre");
+                console.log(
+                  "🔄 Generando etiqueta después de cambio en nombre"
+                );
                 generarEtiqueta(true);
               }, 800); // 800ms de debounce para dar más tiempo para escribir
             });
-            console.log(`✅ Listener con debounce especial agregado para nombre_etiqueta_actual`);
+            console.log(
+              `✅ Listener con debounce especial agregado para nombre_etiqueta_actual`
+            );
           } else {
-            console.warn(`⚠️ No se pudo agregar listener para nombre_etiqueta_actual`);
+            console.warn(
+              `⚠️ No se pudo agregar listener para nombre_etiqueta_actual`
+            );
           }
 
           // Cargar la previsualización inicial para el modo manual inmediatamente
@@ -1523,6 +1682,13 @@
             );
             const configInfoEl = document.getElementById("config_info_manual");
             const targetEl = document.getElementById("target_etiqueta");
+
+            // Verificar el nombre sin impedir la previsualización
+            if (nombreEtiquetaEl && !nombreEtiquetaEl.value.trim()) {
+              nombreEtiquetaEl.classList.add("is-invalid");
+            } else if (nombreEtiquetaEl) {
+              nombreEtiquetaEl.classList.remove("is-invalid");
+            }
 
             // Verificar que los elementos existan
             if (
@@ -1721,6 +1887,16 @@
               return;
             }
 
+            // Verificar el nombre sin impedir la previsualización
+            const nombreEtiquetaEl = document.getElementById(
+              "nombre_etiqueta_actual"
+            );
+            if (nombreEtiquetaEl && !nombreEtiquetaEl.value.trim()) {
+              nombreEtiquetaEl.classList.add("is-invalid");
+            } else if (nombreEtiquetaEl) {
+              nombreEtiquetaEl.classList.remove("is-invalid");
+            }
+
             const zplEditor = document.getElementById("zpl_editor");
             if (!zplEditor) {
               console.error("Editor ZPL no encontrado");
@@ -1807,19 +1983,27 @@
 
               // Obtener el nombre actual del input si está disponible
               let nombreEtiqueta;
-              const nombreInput = document.getElementById("nombre_etiqueta_actual");
+              const nombreInput = document.getElementById(
+                "nombre_etiqueta_actual"
+              );
               if (nombreInput && nombreInput.value.trim()) {
                 // Usar el valor editado por el usuario si existe
                 nombreEtiqueta = nombreInput.value.trim();
-                console.log("Usando nombre editado por el usuario:", nombreEtiqueta);
+                console.log(
+                  "Usando nombre editado por el usuario:",
+                  nombreEtiqueta
+                );
               } else {
                 // Si no hay valor editado, usar el original de la etiqueta
                 nombreEtiqueta = etiquetaOption.textContent
                   .split("(")[0]
                   .trim();
-                console.log("Usando nombre original de la etiqueta:", nombreEtiqueta);
+                console.log(
+                  "Usando nombre original de la etiqueta:",
+                  nombreEtiqueta
+                );
               }
-              
+
               const tipoEtiqueta =
                 etiquetaOption.getAttribute("data-tipo") || "No especificado";
 
@@ -1871,19 +2055,27 @@
                     etiquetaSelect.options[etiquetaSelect.selectedIndex];
                   // Obtener el nombre actual del input si está disponible
                   let nombreEtiqueta;
-                  const nombreInput = document.getElementById("nombre_etiqueta_actual");
+                  const nombreInput = document.getElementById(
+                    "nombre_etiqueta_actual"
+                  );
                   if (nombreInput && nombreInput.value.trim()) {
                     // Usar el valor editado por el usuario si existe
                     nombreEtiqueta = nombreInput.value.trim();
-                    console.log("Usando nombre editado por el usuario (desde selectores):", nombreEtiqueta);
+                    console.log(
+                      "Usando nombre editado por el usuario (desde selectores):",
+                      nombreEtiqueta
+                    );
                   } else {
                     // Si no hay valor editado, usar el original de la etiqueta
                     nombreEtiqueta = etiquetaOption.textContent
                       .split("(")[0]
                       .trim();
-                    console.log("Usando nombre original de la etiqueta (desde selectores):", nombreEtiqueta);
+                    console.log(
+                      "Usando nombre original de la etiqueta (desde selectores):",
+                      nombreEtiqueta
+                    );
                   }
-                  
+
                   const tipoEtiqueta =
                     etiquetaOption.getAttribute("data-tipo") ||
                     "No especificado";
@@ -1950,7 +2142,9 @@
             );
             if (nombreEtiquetaInput) {
               // Extraer solo el nombre, eliminando el identificador entre paréntesis si existe
-              const nombreLimpio = etiquetaOption.textContent.split("(")[0].trim();
+              const nombreLimpio = etiquetaOption.textContent
+                .split("(")[0]
+                .trim();
               nombreEtiquetaInput.value = nombreLimpio;
               console.log(
                 "Nombre de etiqueta cargado (limpio):",
@@ -2199,18 +2393,24 @@
             })
             .then((html) => {
               // Obtener el nombre actual antes de reemplazar el contenido
-              const nombreActual = document.getElementById("nombre_etiqueta_actual").value.trim() || "Sin nombre";
-              
+              const nombreActual =
+                document
+                  .getElementById("nombre_etiqueta_actual")
+                  .value.trim() || "Sin nombre";
+
               // Conservar el div de configuración y agregar la imagen
               const configInfo = document.getElementById(
                 "config_info_existente"
               ).outerHTML;
               document.getElementById("target_etiqueta_existente").innerHTML =
                 configInfo + html;
-              
+
               // Asegurarse de que el nombre mostrado sea el actualizado
               actualizarInfoEtiqueta();
-              console.log("Previsualización inmediata completada con nombre:", nombreActual);
+              console.log(
+                "Previsualización inmediata completada con nombre:",
+                nombreActual
+              );
             })
             .catch((error) => {
               console.error("Error en previsualización inmediata:", error);
@@ -2276,17 +2476,29 @@
               "Información visual de etiqueta actualizada con el nombre:",
               nombreActual
             );
-            
+
             // También actualizamos la referencia en el select si existe
             try {
               const etiquetaSelect = document.getElementById("etiqueta_id");
-              if (etiquetaSelect && etiquetaSelect.selectedIndex > 0 && etiquetaActualId) {
+              if (
+                etiquetaSelect &&
+                etiquetaSelect.selectedIndex > 0 &&
+                etiquetaActualId
+              ) {
                 // Solo para depuración, no afecta la funcionalidad
-                console.log("Nombre actualizado en input:", nombreActual, 
-                            "| Original en select:", etiquetaSelect.options[etiquetaSelect.selectedIndex].textContent);
+                console.log(
+                  "Nombre actualizado en input:",
+                  nombreActual,
+                  "| Original en select:",
+                  etiquetaSelect.options[etiquetaSelect.selectedIndex]
+                    .textContent
+                );
               }
             } catch (selectErr) {
-              console.warn("No se pudo actualizar referencia en select:", selectErr);
+              console.warn(
+                "No se pudo actualizar referencia en select:",
+                selectErr
+              );
             }
           }
         } catch (err) {
@@ -2294,7 +2506,144 @@
         }
       }
 
-      // Función original guardarZPL
+      // Función para mostrar mensajes tipo toast
+      function mostrarToast(mensaje, tipo = "success", duracion = 4000) {
+        // Crear un ID único para el toast
+        const toastId = `toast-${Date.now()}`;
+        
+        // Determinar los colores según el tipo
+        let bgColor, iconClass, borderClass;
+        switch (tipo) {
+          case "success":
+            bgColor = "bg-success text-white";
+            iconClass = "bi-check-circle-fill";
+            borderClass = "border-success";
+            break;
+          case "error":
+          case "danger":
+            bgColor = "bg-danger text-white";
+            iconClass = "bi-exclamation-triangle-fill";
+            borderClass = "border-danger";
+            break;
+          case "warning":
+            bgColor = "bg-warning text-dark";
+            iconClass = "bi-exclamation-circle-fill";
+            borderClass = "border-warning";
+            break;
+          case "info":
+            bgColor = "bg-info text-dark";
+            iconClass = "bi-info-circle-fill";
+            borderClass = "border-info";
+            break;
+          default:
+            bgColor = "bg-secondary text-white";
+            iconClass = "bi-bell-fill";
+            borderClass = "border-secondary";
+        }
+        
+        // Crear el HTML del toast con diseño mejorado y animaciones
+        const toastHTML = `
+          <div id="${toastId}" class="toast ${bgColor} border-3 ${borderClass} shadow-lg rounded-3" 
+               role="alert" aria-live="assertive" aria-atomic="true" 
+               style="transition: all 0.3s ease-in-out; opacity: 0; transform: translateY(-20px);">
+            <div class="d-flex align-items-center p-3">
+              <i class="bi ${iconClass} fs-4 me-2"></i>
+              <div class="ms-1">
+                <strong>${tipo === "success" ? "Éxito" : "Atención"}</strong>
+                <div>${mensaje}</div>
+              </div>
+            </div>
+          </div>
+        `;
+        
+        // Añadir el toast al contenedor
+        document
+          .getElementById("toastContainer")
+          .insertAdjacentHTML("beforeend", toastHTML);
+        
+        // Inicializar y mostrar el toast
+        const toastElement = document.getElementById(toastId);
+        const bsToast = new bootstrap.Toast(toastElement, {
+          autohide: true,
+          delay: duracion,
+        });
+        
+        // Aplicar animación de entrada personalizada
+        setTimeout(() => {
+          toastElement.style.opacity = "1";
+          toastElement.style.transform = "translateY(0)";
+        }, 10);
+        
+        bsToast.show();
+        
+        // Añadir animación de salida antes de eliminar
+        toastElement.addEventListener('hide.bs.toast', function () {
+          toastElement.style.opacity = "0";
+          toastElement.style.transform = "translateY(-20px)";
+        });
+        
+        // Eliminar el toast del DOM cuando se oculte
+        toastElement.addEventListener("hidden.bs.toast", function () {
+          toastElement.remove();
+        });
+      }
+
+      // Función para validar campos requeridos y mostrar errores visuales
+      function validarCampoRequerido(input, mensaje = null) {
+        // Reiniciar el estilo del campo
+        input.classList.remove("is-invalid");
+
+        // Obtener el valor del campo y verificar si está vacío
+        const valor = input.value.trim();
+        if (!valor) {
+          // Resaltar el campo en rojo
+          input.classList.add("is-invalid");
+
+          // Mostrar mensaje de error debajo del campo si no existe
+          let feedbackEl = input.nextElementSibling;
+          if (
+            !feedbackEl ||
+            !feedbackEl.classList.contains("invalid-feedback")
+          ) {
+            feedbackEl = document.createElement("div");
+            feedbackEl.className = "invalid-feedback";
+            feedbackEl.textContent = mensaje || "Este campo es obligatorio";
+            input.parentNode.insertBefore(feedbackEl, input.nextSibling);
+          }
+
+          return false;
+        }
+
+        return true;
+      }
+
+      // Función para limpiar validación visual cuando el usuario interactúa con el campo
+      function agregarLimpiezaValidacion(input) {
+        input.addEventListener("input", function () {
+          input.classList.remove("is-invalid");
+        });
+
+        input.addEventListener("focus", function () {
+          input.classList.remove("is-invalid");
+        });
+      }
+
+      // Agregar limpieza de validación a los campos de nombre cuando el DOM esté listo
+      document.addEventListener("DOMContentLoaded", function () {
+        // Campos de nombre
+        const nombreManual = document.getElementById("nombre_etiqueta");
+        const nombreExistente = document.getElementById(
+          "nombre_etiqueta_actual"
+        );
+
+        if (nombreManual) {
+          agregarLimpiezaValidacion(nombreManual);
+        }
+
+        if (nombreExistente) {
+          agregarLimpiezaValidacion(nombreExistente);
+        }
+      });
     </script>
   </body>
 </html>
