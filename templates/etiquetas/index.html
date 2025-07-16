@@ -1284,6 +1284,12 @@
 
               // Limpiar el formulario
               document.getElementById("nombre_etiqueta").value = "";
+              
+              // Actualizar la información de configuración para reflejar "Sin nombre"
+              actualizarInfoConfigManual();
+              
+              // También actualizar la previsualización para mostrar la configuración actualizada
+              visualizarEtiquetaCompleta();
             } else {
               mostrarToast(
                 "Error al crear la etiqueta: " + data.error,
