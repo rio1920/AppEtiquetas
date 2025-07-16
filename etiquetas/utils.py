@@ -219,54 +219,154 @@ class Patrones:
 
     @staticmethod
     def limpiar_variable(var: str) -> str:
-        """Limpia una variable ZPL, eliminando espacios y tomando solo antes de ';'"""
-        return var.strip().split(';')[0]
+        """Limpia una variable ZPL, eliminando espacios, comillas y tomando solo antes de ';'"""
+        # Primero eliminamos espacios
+        var_limpia = var.strip()
+        # Eliminamos comillas dobles si existen
+        var_limpia = var_limpia.replace('"', '')
+        # Tomamos solo la parte antes del punto y coma (parámetros adicionales)
+        var_limpia = var_limpia.split(';')[0]
+        return var_limpia
 
     @staticmethod
-    def agregar_var(var: str, variables: list):
-        """Agrega una variable a la lista si no está y está limpia"""
+    def agregar_var(var: str, variables: list, idiomas=None):
+        """
+        Agrega una variable a la lista si no está y está limpia
+        Si se proporciona el parámetro idiomas, también extrae el idioma de la variable
+        """
         var_limpia = Patrones.limpiar_variable(var)
         if var_limpia and var_limpia not in variables:
             variables.append(var_limpia)
+            
+        # Si se especifica el parámetro idiomas, verificar si la variable tiene formato IDIOMAVARIABLE
+        if idiomas is not None and 'IDIOMAVARIABLE' in var_limpia:
+            # Añadir IDIOMAVARIABLE a la lista de idiomas
+            idiomas.append('IDIOMAVARIABLE')
 
     @staticmethod
     def extraer_variables(zpl: str) -> list:
         """Extrae variables de un string ZPL usando expresiones regulares"""
         variables = []
+        idiomas = []
 
-        # Buscar patrón anidado [@var1[@var2@]@]
-        patron_anidado = re.compile(r'\[@([^\[@]+)\[@([^@]+)@]@]')
+        # Patrón especificado: [@Variable[@IDIOMAVARIABLE@]@]
+        # Primero extraemos este patrón específico
+        patron_variable_idioma = re.compile(r'\[@([^@\[\]]+)\[@([^@\[\]]+)@]@]')
+        for variable, idioma_var in patron_variable_idioma.findall(zpl):
+            Patrones.agregar_var(variable, variables)
+            # Si la variable interna es IDIOMAVARIABLE, la agregamos también
+            if idioma_var == "IDIOMAVARIABLE":
+                idiomas.append(idioma_var)
+            else:
+                Patrones.agregar_var(idioma_var, variables)
+
+        # Buscar patrón con idioma tradicional [@Variable@IDIOMAVARIABLE@] 
+        # incluyendo variables con comillas y parámetros [@"Variable";params@IDIOMAVARIABLE@]
+        patron_con_idioma = re.compile(r'\[@([^@\[\];]+(?:;[^@\[\]]+)?)@([^@\[\]]+)@]')
+        for var, idioma in patron_con_idioma.findall(zpl):
+            # Evitamos capturar el patrón anterior nuevamente
+            if not re.search(r'\[@[^@\[\]]+\[@[^@\[\]]+@]@]', f"[@{var}@{idioma}@]"):
+                Patrones.agregar_var(var, variables)
+                idiomas.append(idioma.strip())
+
+        # Buscar patrón anidado general [@var1[@var2@]@] que no sea el específico de idiomas
+        patron_anidado = re.compile(r'\[@([^@\[\];]+(?:;[^@\[\]]+)?)\[@([^@\[\];]+(?:;[^@\[\]]+)?)@]@]')
         for externo, interno in patron_anidado.findall(zpl):
-            Patrones.agregar_var(externo, variables)
-            Patrones.agregar_var(interno, variables)
+            # Evitar duplicados ya capturados por patron_variable_idioma
+            var_externo = Patrones.limpiar_variable(externo)
+            var_interno = Patrones.limpiar_variable(interno)
+            if interno != "IDIOMAVARIABLE" and not (var_externo in variables and var_interno in variables):
+                Patrones.agregar_var(externo, variables)
+                Patrones.agregar_var(interno, variables)
 
-        # Buscar patrón simple [@Variable@]
-        patron_simple = re.compile(r'\[@([^@]+)@]')
+        # Buscar patrón simple [@Variable@] incluyendo variables con comillas y parámetros [@"Variable";params@]
+        patron_simple = re.compile(r'\[@([^@\[\];]+(?:;[^@\[\]]+)?)@]')
         for var in patron_simple.findall(zpl):
-            Patrones.agregar_var(var, variables)
+            # Evitar duplicados que ya fueron capturados
+            if '@' not in var and '[' not in var and ']' not in var:
+                Patrones.agregar_var(var, variables)
 
         return variables
+    
+    @staticmethod
+    def extraer_variables_con_idioma(zpl: str) -> dict:
+        """
+        Extrae variables y sus idiomas asociados del ZPL
+        Retorna un diccionario con la variable como clave y el idioma como valor
+        """
+        variables_con_idioma = {}
+        
+        # Buscar patrón [@Variable[@IDIOMAVARIABLE@]@]
+        patron_idioma_anidado = re.compile(r'\[@([^@\[\]]+)\[@IDIOMAVARIABLE@]@]')
+        for var in patron_idioma_anidado.findall(zpl):
+            var_limpia = Patrones.limpiar_variable(var)
+            # Para este patrón específico, sabemos que queremos buscar la variable en todos los idiomas
+            # disponibles, así que marcamos esto de manera especial
+            variables_con_idioma[var_limpia] = "MULTI_IDIOMA"
+        
+        # Buscar patrón con idioma tradicional [@Variable@Idioma@]
+        patron_con_idioma = re.compile(r'\[@([^@\[\]]+)@([^@\[\]]+)@]')
+        for var, idioma in patron_con_idioma.findall(zpl):
+            # Evitar capturar nuevamente los patrones de idioma anidado
+            if not re.search(r'\[@[^@\[\]]+\[@IDIOMAVARIABLE@]@]', f"[@{var}@{idioma}@]"):
+                var_limpia = Patrones.limpiar_variable(var)
+                variables_con_idioma[var_limpia] = idioma.strip()
+            
+        return variables_con_idioma
     
     @staticmethod
     def extraer_variables_de_texto(texto: str) -> list:
         """Devuelve las variables completas tal como aparecen en el texto ZPL."""
         variables = set()
 
-        # Anidados primero (más largos), ej: [@Externo[@Interno@]@]
+        # Variables con idioma [@Variable@Idioma@]
+        patron_con_idioma = re.compile(r'\[@[^@]+@[^@]+@]')
+        variables.update(patron_con_idioma.findall(texto))
+
+        # Anidados luego, ej: [@Externo[@Interno@]@]
         patron_anidado = re.compile(r'\[@[^\[@]+?\[@[^@]+?@]@]')
         variables.update(patron_anidado.findall(texto))
 
         # Luego simples, ej: [@Variable@]
         patron_simple = re.compile(r'\[@[^@]+?@]')
-        variables.update(patron_simple.findall(texto))
+        for match in patron_simple.findall(texto):
+            # Evitar duplicados que ya fueron capturados por patron_con_idioma
+            if match.count('@') <= 2:
+                variables.add(match)
 
         return list(variables)
     
     @staticmethod
     def extraer_var_limpia(variable_completa: str) -> str | None:
+        """Extrae el nombre de la variable de la expresión completa"""
+        # Para formato [@Variable[@IDIOMAVARIABLE@]@]
+        patron_idioma_anidado = re.compile(r'\[@([^@\[\]]+)\[@IDIOMAVARIABLE@]@]')
+        match = patron_idioma_anidado.search(variable_completa)
+        if match:
+            var = match.group(1).strip()
+            return Patrones.limpiar_variable(var)
+            
+        # Para formato [@Variable@] incluyendo casos con comillas y parámetros como [@"Variable";param@]
+        patron = re.compile(r'\[@\s*([^@\[\];]+(?:;[^@\[\]]+)?)(@|@\])')
+        match = patron.search(variable_completa)
+        if match:
+            var = match.group(1).strip()
+            return Patrones.limpiar_variable(var)
         
-        patron = re.compile(r'\[@\s*([^\[@;]+)')
-        match = patron.match(variable_completa)
+        # Para formato [@Variable@Idioma@] incluyendo casos con comillas
+        patron_con_idioma = re.compile(r'\[@\s*([^@\[\];]+(?:;[^@\[\]]+)?)@')
+        match = patron_con_idioma.search(variable_completa)
+        if match:
+            var = match.group(1).strip()
+            return Patrones.limpiar_variable(var)
+            
+        return None
+        
+    @staticmethod
+    def extraer_idioma(variable_completa: str) -> str | None:
+        """Extrae el idioma de una variable con formato [@Variable@Idioma@]"""
+        patron = re.compile(r'\[@[^@]+@([^@]+)@]')
+        match = patron.search(variable_completa)
         if match:
             return match.group(1).strip()
         return None

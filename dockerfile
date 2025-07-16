@@ -25,7 +25,3 @@ CMD ["python3", "manage.py", "runserver", "0.0.0.0:8000"]
 # docker push tu_usuario/labelary:latest
 # si el repositorio es privado se debe usar el comando
 # docker push labelary:latest
-
-
-# testing
-# no se deberia cosntruir la imagen 

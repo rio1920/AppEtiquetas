@@ -2,9 +2,109 @@ from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse
 from .utils import Labelary, Patrones
 from .models import Etiqueta, Variable
-from .models import Impresora, Insumo, Rotacion
+from .models import Impresora, Insumo, Rotacion, Idioma
+import re
+
+
+def verificar_variables_no_definidas(variables_encontradas, variables_definidas, contexto="", info_adicional=""):
+    """
+    Función utilitaria para identificar variables que no están definidas en la base de datos
+    y registrarlas en la consola para su seguimiento.
+    
+    Args:
+        variables_encontradas: Lista de variables encontradas en el ZPL
+        variables_definidas: Diccionario de variables definidas en la base de datos
+        contexto: Nombre de la función o contexto para el log
+        info_adicional: Información adicional útil para el seguimiento
+    
+    Returns:
+        Lista de variables no definidas
+    """
+    variables_no_definidas = [var for var in variables_encontradas if var not in variables_definidas]
+    
+    if variables_no_definidas:
+        print(f"[{contexto}] Variables no definidas en la base de datos: {variables_no_definidas}")
+        if info_adicional:
+            print(f"[{contexto}] Info adicional: {info_adicional}")
+    
+    return variables_no_definidas
+
+def procesar_variables_con_idioma(zpl, idioma_default='ES'):
+    """
+    Procesa el ZPL para encontrar variables con idioma y reemplazarlas con los valores correspondientes.
+    
+    Args:
+        zpl: String con el código ZPL
+        idioma_default: Código del idioma por defecto si no se especifica uno (en mayúsculas)
+    
+    Returns:
+        ZPL procesado y diccionario de variables no encontradas
+    """
+    # Extraer todas las variables del ZPL
+    variables_encontradas = Patrones.extraer_variables(zpl)
+    
+    # Extraer variables con su idioma específico
+    variables_con_idioma = Patrones.extraer_variables_con_idioma(zpl)
+    
+    # Para cada variable, buscar su valor según el idioma correspondiente
+    variables_procesadas = {}
+    variables_no_encontradas = {}
+    
+    for var in variables_encontradas:
+        # Determinar el idioma para esta variable
+        idioma_asignado = variables_con_idioma.get(var, idioma_default)
+        
+        if idioma_asignado == "MULTI_IDIOMA":
+            # Esta es una variable con el formato [@Variable[@IDIOMAVARIABLE@]@]
+            # Necesitamos buscar su valor en el idioma especificado en la solicitud
+            try:
+                variable_obj = Variable.objects.get(codigo=var, idioma=idioma_default)
+                variables_procesadas[var] = variable_obj.default
+            except Variable.DoesNotExist:
+                variables_no_encontradas[var] = idioma_default
+                variables_procesadas[var] = None
+                print(f"Variable multi-idioma '{var}' no encontrada en idioma '{idioma_default}'")
+        else:
+            # Procesamiento normal para variables con idioma específico
+            try:
+                # Buscar la variable con el idioma específico
+                variable_obj = Variable.objects.get(codigo=var, idioma=idioma_asignado)
+                variables_procesadas[var] = variable_obj.default
+            except Variable.DoesNotExist:
+                try:
+                    # Si no existe con ese idioma, intentar con el idioma por defecto
+                    variable_obj = Variable.objects.get(codigo=var, idioma=idioma_default)
+                    variables_procesadas[var] = variable_obj.default
+                    print(f"Variable '{var}' no encontrada en idioma '{idioma_asignado}', usando idioma por defecto")
+                except Variable.DoesNotExist:
+                    variables_no_encontradas[var] = idioma_asignado
+                    variables_procesadas[var] = None
+                    print(f"Variable '{var}' no encontrada en ningún idioma")
+    
+    # Reemplazar las variables en el ZPL
+    # Primero, procesar el patrón especial [@Variable[@IDIOMAVARIABLE@]@]
+    patron_idioma_anidado = re.compile(r'\[@([^@\[\]]+)\[@IDIOMAVARIABLE@]@]')
+    for match in patron_idioma_anidado.findall(zpl):
+        var_limpia = Patrones.limpiar_variable(match)
+        if var_limpia in variables_procesadas and variables_procesadas[var_limpia]:
+            patron_completo = f"[@{match}[@IDIOMAVARIABLE@]@]"
+            zpl = zpl.replace(patron_completo, variables_procesadas[var_limpia])
+    
+    # Luego procesar el resto de las variables
+    extrer_variables_idem_texto = Patrones.extraer_variables_de_texto(zpl)
+    
+    for palabra in extrer_variables_idem_texto:
+        var_limpia = Patrones.extraer_var_limpia(palabra)
+        if var_limpia and var_limpia in variables_procesadas and variables_procesadas[var_limpia]:
+            zpl = zpl.replace(palabra, variables_procesadas[var_limpia])
+    
+    return zpl, variables_no_encontradas
 
 def etiqueta_png(request):
+    # Obtener todos los idiomas para el selector
+    from .models import Idioma
+    idiomas = Idioma.objects.all()
+    
     if request.method == "POST":
         try:
             # Obtener el ZPL directamente o a través del ID de etiqueta
@@ -43,21 +143,31 @@ def etiqueta_png(request):
             if not zpl or not zpl.strip():
                 return render(request, 'etiquetas/png.html', {'error': 'El código ZPL está vacío'})
                 
-            # Procesar variables en el ZPL
-            variables_encontradas = Patrones.extraer_variables(zpl)
-            variables_en_base_datos = Variable.objects.filter(codigo__in=variables_encontradas).values('codigo', 'default')
-            diccionario_variables = {var['codigo']: var['default'] for var in variables_en_base_datos}
-            extrer_variables_idem_texto = Patrones.extraer_variables_de_texto(zpl)
+            # Procesamiento con soporte para variables con idioma
+            idioma_default = 'ES'  # Idioma por defecto (en mayúsculas)
             
-            # Reemplazar variables con sus valores predeterminados
-            for var in variables_encontradas:
-                if var not in diccionario_variables:
-                    pass  # Variable no definida
-                else:
-                    default_value = diccionario_variables[var]
-                    for palabra in extrer_variables_idem_texto:
-                        if var in palabra:
-                            zpl = zpl.replace(palabra, default_value)
+            # Si hay un idioma especificado en la solicitud, usarlo
+            if 'idioma' in request.POST and request.POST.get('idioma'):
+                idioma_solicitado = request.POST.get('idioma')
+                try:
+                    # Verificar si el idioma solicitado existe en la base de datos
+                    from .models import Idioma
+                    Idioma.objects.get(codigo=idioma_solicitado)  # codigo es la clave primaria
+                    idioma_default = idioma_solicitado
+                except Exception:
+                    pass  # Si el idioma no existe, se mantiene el idioma por defecto
+            
+            # Extraer todas las variables para mantener compatibilidad con el código existente
+            variables_encontradas = Patrones.extraer_variables(zpl)
+            
+            # Procesar las variables con el idioma correspondiente
+            zpl, variables_no_encontradas = procesar_variables_con_idioma(zpl, idioma_default)
+            
+            # Registrar variables no encontradas para seguimiento
+            if variables_no_encontradas:
+                info_adicional = f"Etiqueta ID: {etiqueta_id if 'etiqueta_id' in request.POST else 'N/A'}, Idioma: {idioma_default}"
+                print(f"[etiqueta_png] Variables no encontradas: {variables_no_encontradas}")
+                print(f"[etiqueta_png] Info adicional: {info_adicional}")
             
             # Si tenemos la etiqueta completa, usar el nuevo método de renderizado
             if etiqueta:
@@ -70,13 +180,36 @@ def etiqueta_png(request):
                 img = Labelary().pngPrimaria(zpl)
                 
             if img:
-                return render(request, 'etiquetas/png.html', {'imagen': img, 'variables': variables_encontradas})
+                return render(request, 'etiquetas/png.html', {
+                    'imagen': img, 
+                    'variables': variables_encontradas,
+                    'idiomas': idiomas,
+                    'idioma_actual': idioma_default  # Para marcar el idioma seleccionado
+                })
             else:
-                return render(request, 'etiquetas/png.html', {'error': 'No se pudo generar la imagen'})
+                return render(request, 'etiquetas/png.html', {
+                    'error': 'No se pudo generar la imagen',
+                    'idiomas': idiomas,
+                    'idioma_actual': idioma_default  # Mantener el idioma seleccionado incluso en caso de error
+                })
         except Exception as e:
-
             # Logs eliminados para producción
-            return render(request, 'etiquetas/png.html', {'error': f'Error al generar la etiqueta: {str(e)}'})
+            
+            # Determinar el idioma actual (usar el valor por defecto si no se especificó)
+            idioma_default = 'ES'
+            if 'idioma' in request.POST and request.POST.get('idioma'):
+                try:
+                    # Verificar si el idioma solicitado existe en la base de datos
+                    Idioma.objects.get(codigo=request.POST.get('idioma'))
+                    idioma_default = request.POST.get('idioma')
+                except Exception:
+                    pass
+            
+            return render(request, 'etiquetas/png.html', {
+                'error': f'Error al generar la etiqueta: {str(e)}',
+                'idiomas': idiomas,
+                'idioma_actual': idioma_default
+            })
 
 
 
@@ -89,11 +222,11 @@ def index(request):
     # Obtener tipos únicos de etiquetas para el select
     tipos_etiquetas = [clave for clave, _ in Etiqueta.TIPO_CHOICES]
     
-    # Obtener impresoras, insumos y rotaciones para los selectores
-    
+    # Obtener impresoras, insumos, rotaciones e idiomas para los selectores
     impresoras = Impresora.objects.all()
     insumos = Insumo.objects.all()
     rotaciones = Rotacion.objects.all()
+    idiomas = Idioma.objects.all()  # Obtener todos los idiomas disponibles
         
     # Obtener una etiqueta para mostrar en el textarea
     try:
@@ -110,26 +243,41 @@ def index(request):
         'impresoras': impresoras,
         'insumos': insumos,
         'rotaciones': rotaciones,
+        'idiomas': idiomas,  # Pasar los idiomas a la plantilla
     })
 
 def renderizar_etiqueta(request, etiqueta_id):
     """Vista para renderizar una etiqueta específica por su ID"""
+    # Obtener todos los idiomas para el selector
+    from .models import Idioma
+    idiomas = Idioma.objects.all()
+    
     etiqueta = get_object_or_404(Etiqueta, id=etiqueta_id)
     
-    # Obtener el ZPL y procesar sus variables
+    # Obtener el ZPL y procesarlo con el soporte para idiomas
     zpl = etiqueta.contenido_zpl
-    variables_encontradas = Patrones.extraer_variables(zpl)
-    variables_en_base_datos = Variable.objects.filter(codigo__in=variables_encontradas).values('codigo', 'default')
-    diccionario_variables = {var['codigo']: var['default'] for var in variables_en_base_datos}
-    extrer_variables_idem_texto = Patrones.extraer_variables_de_texto(zpl)
     
-    # Reemplazar variables
-    for var in variables_encontradas:
-        if var in diccionario_variables:
-            default_value = diccionario_variables[var]
-            for palabra in extrer_variables_idem_texto:
-                if var in palabra:
-                    zpl = zpl.replace(palabra, default_value)
+    # Extraer todas las variables para mantener compatibilidad con el código existente
+    variables_encontradas = Patrones.extraer_variables(zpl)
+    
+    # Idioma por defecto 'ES' (español), se podría configurar como parámetro en la solicitud
+    idioma_default = 'ES'
+    if request.GET.get('idioma'):
+        try:
+            from .models import Idioma
+            Idioma.objects.get(codigo=request.GET.get('idioma'))  # codigo es la clave primaria
+            idioma_default = request.GET.get('idioma')
+        except Exception:
+            pass
+            
+    # Procesar las variables con el idioma correspondiente
+    zpl, variables_no_encontradas = procesar_variables_con_idioma(zpl, idioma_default)
+    
+    # Registrar variables no encontradas para seguimiento
+    if variables_no_encontradas:
+        info_adicional = f"Etiqueta ID: {etiqueta_id}, Nombre: '{etiqueta.nombre}', Idioma: {idioma_default}"
+        print(f"[renderizar_etiqueta] Variables no encontradas: {variables_no_encontradas}")
+        print(f"[renderizar_etiqueta] Info adicional: {info_adicional}")
     
     # Actualizar el ZPL con variables reemplazadas
     etiqueta.contenido_zpl = zpl
@@ -138,7 +286,12 @@ def renderizar_etiqueta(request, etiqueta_id):
     labelary = Labelary()
     img = labelary.renderizar_etiqueta(etiqueta)
     
-    return render(request, 'etiquetas/png.html', {'imagen': img, 'variables': variables_encontradas})
+    return render(request, 'etiquetas/png.html', {
+        'imagen': img, 
+        'variables': variables_encontradas,
+        'idiomas': idiomas,
+        'idioma_actual': idioma_default  # Para marcar el idioma seleccionado
+    })
 
 # Vistas para manejar el ZPL de las etiquetas
 def get_zpl(request, etiqueta_id):
@@ -243,7 +396,7 @@ def crear_etiqueta(request):
             rotacion = get_object_or_404(Rotacion, id=rotacion_id)
             
             # Crear la etiqueta
-            etiqueta = Etiqueta.objects.create(
+            Etiqueta.objects.create(
                 nombre=nombre,
                 tipo_etiqueta=tipo_etiqueta,
                 impresora=impresora,
@@ -261,6 +414,10 @@ def crear_etiqueta(request):
 def visualizar_etiqueta(request):
     """Vista para visualizar una etiqueta con los parámetros seleccionados sin guardarla"""
     
+    # Obtener todos los idiomas para el selector
+    from .models import Idioma
+    idiomas = Idioma.objects.all()
+    
     if request.method == "POST":
         # Obtener datos del formulario
         impresora_id = request.POST.get('impresora_id')
@@ -270,7 +427,7 @@ def visualizar_etiqueta(request):
         zpl = request.POST.get('zpl')
         # Validar que tengamos los datos necesarios
         if not impresora_id or not insumo_id or not rotacion_id or not zpl:
-            return render(request, 'etiquetas/png.html', {'error': 'Faltan datos obligatorios'})
+            return render(request, 'etiquetas/png.html', {'error': 'Faltan datos obligatorios', 'idiomas': idiomas})
         
         try:
             # Obtener objetos relacionados
@@ -288,19 +445,27 @@ def visualizar_etiqueta(request):
                 contenido_zpl=zpl
             )
             
-            # Procesar variables en el ZPL
+            # Extraer variables para mantener compatibilidad con código existente
             variables_encontradas = Patrones.extraer_variables(zpl)
-            variables_en_base_datos = Variable.objects.filter(codigo__in=variables_encontradas).values('codigo', 'default')
-            diccionario_variables = {var['codigo']: var['default'] for var in variables_en_base_datos}
-            extrer_variables_idem_texto = Patrones.extraer_variables_de_texto(zpl)
             
-            # Reemplazar variables con sus valores predeterminados
-            for var in variables_encontradas:
-                if var in diccionario_variables:
-                    default_value = diccionario_variables[var]
-                    for palabra in extrer_variables_idem_texto:
-                        if var in palabra:
-                            zpl = zpl.replace(palabra, default_value)
+            # Determinar el idioma a utilizar
+            idioma_default = 'ES'  # Idioma por defecto (en mayúsculas)
+            if 'idioma' in request.POST and request.POST.get('idioma'):
+                try:
+                    from .models import Idioma
+                    Idioma.objects.get(codigo=request.POST.get('idioma'))  # codigo es la clave primaria
+                    idioma_default = request.POST.get('idioma')
+                except Exception:
+                    pass
+            
+            # Procesar las variables con el idioma correspondiente
+            zpl, variables_no_encontradas = procesar_variables_con_idioma(zpl, idioma_default)
+            
+            # Registrar variables no encontradas para seguimiento
+            if variables_no_encontradas:
+                info_adicional = f"Tipo etiqueta: {tipo_etiqueta}, Idioma: {idioma_default}"
+                print(f"[visualizar_etiqueta] Variables no encontradas: {variables_no_encontradas}")
+                print(f"[visualizar_etiqueta] Info adicional: {info_adicional}")
             
             # Actualizar el ZPL con las variables reemplazadas
             etiqueta.contenido_zpl = zpl
@@ -309,10 +474,29 @@ def visualizar_etiqueta(request):
             labelary = Labelary()
             img = labelary.renderizar_etiqueta(etiqueta)
             
-            return render(request, 'etiquetas/png.html', {'imagen': img, 'variables': variables_encontradas})
+            return render(request, 'etiquetas/png.html', {
+                'imagen': img, 
+                'variables': variables_encontradas,
+                'idiomas': idiomas,
+                'idioma_actual': idioma_default  # Para marcar el idioma seleccionado
+            })
         
         except Exception as e:
-            return render(request, 'etiquetas/png.html', {'error': f'Error al visualizar: {str(e)}'})
+            # Determinar el idioma actual (usar el valor por defecto si no se especificó)
+            idioma_default = 'ES'
+            if 'idioma' in request.POST and request.POST.get('idioma'):
+                try:
+                    # Verificar si el idioma solicitado existe en la base de datos
+                    Idioma.objects.get(codigo=request.POST.get('idioma'))
+                    idioma_default = request.POST.get('idioma')
+                except Exception:
+                    pass
+                    
+            return render(request, 'etiquetas/png.html', {
+                'error': f'Error al visualizar: {str(e)}',
+                'idiomas': idiomas,
+                'idioma_actual': idioma_default
+            })
     
     return render(request, 'etiquetas/png.html', {'error': 'Método no permitido'})
 

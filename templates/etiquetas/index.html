@@ -288,6 +288,8 @@
                     </div>
                   </div>
 
+                  <!-- El selector de idioma para edición manual estará junto con los otros selectores -->
+
                   <div class="col-12 col-sm-4">
                     <div class="mb-3">
                       <label for="tipo_etiqueta_manual" class="form-label"
@@ -359,6 +361,25 @@
                       </select>
                     </div>
                   </div>
+
+                  <!-- Selector de idioma para edición manual -->
+                  <div class="col-12 col-sm-4">
+                    <div class="mb-3">
+                      <label for="idioma" class="form-label">Idioma:</label>
+                      <select
+                        class="form-select"
+                        name="idioma"
+                        id="idioma"
+                        onchange="actualizarPrevisualizacionManual()"
+                      >
+                        {% for idioma in idiomas %}
+                        <option value="{{ idioma.codigo }}">
+                          {{ idioma.nombre }}
+                        </option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                  </div>
                 </div>
 
                 <div class="d-grid gap-2 d-md-flex justify-content-md-start">
@@ -425,7 +446,7 @@
                       value="{{ etiqueta.id }}"
                       data-tipo="{{ etiqueta.tipo_etiqueta }}"
                     >
-                      {{ etiqueta.nombre }} ({{ etiqueta.tipo_etiqueta }})
+                      {{ etiqueta.nombre }}
                     </option>
                     {% endfor %} {% else %}
                     <option value="">No hay etiquetas disponibles</option>
@@ -499,6 +520,26 @@
                         {% for rotacion in rotaciones %}
                         <option value="{{ rotacion.id }}">
                           {{ rotacion.angulo }}°
+                        </option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                  </div>
+
+                  <!-- Selector de idioma para etiquetas existentes -->
+                  <div class="col-12 col-sm-4">
+                    <div class="mb-3">
+                      <label for="idioma_existente" class="form-label"
+                        >Idioma:</label
+                      >
+                      <select
+                        class="form-select"
+                        name="idioma"
+                        id="idioma_existente"
+                      >
+                        {% for idioma in idiomas %}
+                        <option value="{{ idioma.codigo }}">
+                          {{ idioma.nombre }}
                         </option>
                         {% endfor %}
                       </select>
@@ -624,6 +665,7 @@
         impresora: null,
         insumo: null,
         rotacion: null,
+        idioma: "es", // Idioma español por defecto
       };
 
       // Función para filtrar las etiquetas según el tipo seleccionado
@@ -979,6 +1021,22 @@
           formData.append("insumo_id", insumoId);
           formData.append("rotacion_id", rotacionId);
 
+          // Incluir el idioma seleccionado
+          const idiomaSelect = document.getElementById("idioma_existente");
+          if (idiomaSelect) {
+            formData.append("idioma", idiomaSelect.value);
+            console.log(
+              "Idioma seleccionado para generación:",
+              idiomaSelect.value
+            );
+          } else {
+            // Si no hay selector, usar español por defecto
+            formData.append("idioma", "es");
+            console.warn(
+              "No se encontró selector de idioma, usando 'es' por defecto"
+            );
+          }
+
           // Mostrar spinner de carga mientras se genera la etiqueta
           const spinnerHTML = `
             <div id="spinner-existente" class="text-center my-3 py-4">
@@ -994,6 +1052,13 @@
 
           // Actualizar la información de configuración con los nuevos valores
           try {
+            // Obtener el idioma seleccionado
+            const idiomaEl = document.getElementById("idioma_existente");
+            const idiomaId = idiomaEl ? idiomaEl.value : "es";
+            const idiomaText = idiomaEl
+              ? idiomaEl.options[idiomaEl.selectedIndex].text
+              : "Español";
+
             const config = {
               impresora: impresoraEl.options[impresoraEl.selectedIndex].text,
               insumo: insumoEl.options[insumoEl.selectedIndex].text,
@@ -1001,6 +1066,8 @@
               impresora_id: impresoraId,
               insumo_id: insumoId,
               rotacion_id: rotacionId,
+              idioma: idiomaId,
+              idioma_text: idiomaText,
             };
             actualizarInfoConfigExistente(config);
           } catch (configErr) {
@@ -1396,6 +1463,20 @@
           formData.append("csrfmiddlewaretoken", csrfToken);
           formData.append("preview", "true"); // Indicar que es una previsualización
 
+          // Incluir el idioma seleccionado
+          const idiomaSelect = document.getElementById("idioma");
+          if (idiomaSelect) {
+            formData.append("idioma", idiomaSelect.value);
+            console.log(
+              "Idioma seleccionado para edición manual:",
+              idiomaSelect.value
+            );
+          } else {
+            console.warn(
+              "No se encontró el selector de idioma para edición manual"
+            );
+          }
+
           // Enviar la solicitud para visualizar la etiqueta
           fetch("{% url 'visualizar_etiqueta' %}", {
             method: "POST",
@@ -1778,6 +1859,7 @@
             "impresora_id_existente",
             "insumo_id_existente",
             "rotacion_id_existente",
+            "idioma_existente",
             // Quitamos el campo nombre_etiqueta_actual para manejarlo por separado
           ];
 
@@ -1785,7 +1867,21 @@
             const el = document.getElementById(id);
             if (el) {
               el.addEventListener("change", () => {
-                console.log(`🔄 Cambio en ${id}, generando etiqueta`);
+                console.log(
+                  `🔄 Cambio en ${id}, generando etiqueta (etiquetaActualId: ${etiquetaActualId})`
+                );
+
+                // Verificar que tengamos un ID de etiqueta válido
+                if (!etiquetaActualId) {
+                  console.warn(
+                    `⚠️ No hay etiqueta actual seleccionada al cambiar ${id}`
+                  );
+                  document.getElementById(
+                    "config_info_existente"
+                  ).innerHTML = `<div class="alert alert-warning">Por favor, seleccione primero una etiqueta</div>`;
+                  return;
+                }
+
                 generarEtiqueta(true);
               });
               console.log(`✅ Listener agregado para ${id} con evento change`);
@@ -2031,6 +2127,16 @@
             formData.append("csrfmiddlewaretoken", csrfToken);
             formData.append("preview", "true");
 
+            // Incluir el idioma seleccionado
+            const idiomaSelect = document.getElementById("idioma");
+            if (idiomaSelect) {
+              formData.append("idioma", idiomaSelect.value);
+              console.log(
+                "Idioma seleccionado para previsualización manual:",
+                idiomaSelect.value
+              );
+            }
+
             // Enviar la solicitud para visualizar la etiqueta
             fetch("{% url 'visualizar_etiqueta' %}", {
               method: "POST",
@@ -2082,6 +2188,7 @@
         const rotacionEl = document.getElementById("rotacion_id");
         const tipoEl = document.getElementById("tipo_etiqueta_manual");
         const nombreEl = document.getElementById("nombre_etiqueta");
+        const idiomaEl = document.getElementById("idioma");
 
         const impresoraText =
           impresoraEl.options[impresoraEl.selectedIndex].text;
@@ -2089,17 +2196,19 @@
         const rotacionText = rotacionEl.options[rotacionEl.selectedIndex].text;
         const tipoText = tipoEl.options[tipoEl.selectedIndex].text;
         const nombreText = nombreEl.value || "Sin nombre";
+        const idiomaText = idiomaEl.options[idiomaEl.selectedIndex].text;
 
         configActualManual = {
           impresora: impresoraEl.value,
           insumo: insumoEl.value,
           rotacion: rotacionEl.value,
           tipo: tipoEl.value,
+          idioma: idiomaEl.value,
         };
 
         document.getElementById("config_info_manual").innerHTML =
           `<strong>Nombre:</strong> ${nombreText} | <strong>Tipo:</strong> ${tipoText}<br>` +
-          `<strong>Impresora:</strong> ${impresoraText} | <strong>Tamaño:</strong> ${insumoText} | <strong>Rotación:</strong> ${rotacionText}`;
+          `<strong>Impresora:</strong> ${impresoraText} | <strong>Tamaño:</strong> ${insumoText} | <strong>Rotación:</strong> ${rotacionText} | <strong>Idioma:</strong> ${idiomaText}`;
       }
 
       // Función para actualizar la previsualización en tiempo real en modo etiquetas existentes
@@ -2237,9 +2346,15 @@
               const tipoEtiqueta =
                 etiquetaOption.getAttribute("data-tipo") || "No especificado";
 
+              // Obtener el idioma seleccionado
+              const idiomaEl = document.getElementById("idioma_existente");
+              const idiomaText = idiomaEl
+                ? idiomaEl.options[idiomaEl.selectedIndex].text
+                : "Español";
+
               configInfoEl.innerHTML =
                 `<strong>Nombre:</strong> ${nombreEtiqueta} | <strong>Tipo:</strong> ${tipoEtiqueta}<br>` +
-                `<strong>Impresora:</strong> ${etiquetaData.impresora} | <strong>Tamaño:</strong> ${etiquetaData.insumo} | <strong>Rotación:</strong> ${etiquetaData.rotacion}`;
+                `<strong>Impresora:</strong> ${etiquetaData.impresora} | <strong>Tamaño:</strong> ${etiquetaData.insumo} | <strong>Rotación:</strong> ${etiquetaData.rotacion} | <strong>Idioma:</strong> ${idiomaText}`;
 
               console.log(
                 "Configuración actualizada con datos proporcionados:",
@@ -2310,10 +2425,16 @@
                     etiquetaOption.getAttribute("data-tipo") ||
                     "No especificado";
 
+                  // Obtener el idioma seleccionado
+                  const idiomaEl = document.getElementById("idioma_existente");
+                  const idiomaText = idiomaEl
+                    ? idiomaEl.options[idiomaEl.selectedIndex].text
+                    : "Español";
+
                   // Actualizar la configuración visual
                   configInfoEl.innerHTML =
                     `<strong>Nombre:</strong> ${nombreEtiqueta} | <strong>Tipo:</strong> ${tipoEtiqueta}<br>` +
-                    `<strong>Impresora:</strong> ${impresoraText} | <strong>Tamaño:</strong> ${insumoText} | <strong>Rotación:</strong> ${rotacionText}`;
+                    `<strong>Impresora:</strong> ${impresoraText} | <strong>Tamaño:</strong> ${insumoText} | <strong>Rotación:</strong> ${rotacionText} | <strong>Idioma:</strong> ${idiomaText}`;
 
                   console.log("Configuración actualizada desde selectores:", {
                     nombre: nombreEtiqueta,
@@ -2321,10 +2442,17 @@
                     impresora: impresoraText,
                     insumo: insumoText,
                     rotacion: rotacionText,
+                    idioma: idiomaText,
                   });
                 } else {
+                  // Obtener el idioma seleccionado
+                  const idiomaEl = document.getElementById("idioma_existente");
+                  const idiomaText = idiomaEl
+                    ? idiomaEl.options[idiomaEl.selectedIndex].text
+                    : "Español";
+
                   configInfoEl.innerHTML =
-                    `<strong>Impresora:</strong> ${impresoraText} | <strong>Tamaño:</strong> ${insumoText} | <strong>Rotación:</strong> ${rotacionText}<br>` +
+                    `<strong>Impresora:</strong> ${impresoraText} | <strong>Tamaño:</strong> ${insumoText} | <strong>Rotación:</strong> ${rotacionText} | <strong>Idioma:</strong> ${idiomaText}<br>` +
                     `<div class="alert alert-warning">Información de etiqueta no disponible</div>`;
                 }
               } catch (selectErr) {
@@ -2588,6 +2716,21 @@
           formData.append("impresora_id", config.impresora_id);
           formData.append("insumo_id", config.insumo_id);
           formData.append("rotacion_id", config.rotacion_id);
+          formData.append("idioma", config.idioma || "es"); // Usar idioma por defecto si no se proporciona
+
+          // Incluir el idioma seleccionado
+          const idiomaSelect = document.getElementById("idioma_existente");
+          if (idiomaSelect) {
+            formData.append("idioma", idiomaSelect.value);
+            console.log(
+              "Idioma seleccionado para preview:",
+              idiomaSelect.value
+            );
+          } else {
+            console.warn(
+              "No se encontró el selector de idioma para etiquetas existentes"
+            );
+          }
 
           // URL para la solicitud
           const url = "{% url 'etiqueta_png' %}";
