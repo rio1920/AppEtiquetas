@@ -4,24 +4,24 @@ from django.db import models
 
 class Impresora(models.Model):
     dpi = models.IntegerField()
-    base_url = models.CharField(max_length=50)
+    descripcion = models.CharField(max_length=50)
     
     def __str__(self):
-        return f"Impresora {self.id} ({self.dpi} DPI)"
+        return f"({self.dpi} DPI)"
 
 class Insumo(models.Model):
     nombre = models.CharField(max_length=50)
     tamanio = models.CharField(max_length=10)
     
     def __str__(self):
-        return f"{self.nombre} ({self.tamanio})"
+        return f"{self.tamanio}"
 
 class Rotacion(models.Model):
     descripcion = models.CharField(max_length=50)
     angulo = models.IntegerField()
     
     def __str__(self):
-        return f"{self.descripcion} ({self.angulo}°)"
+        return f"{self.angulo}°"
 
 class Etiqueta(models.Model):
     TIPO_CHOICES = [

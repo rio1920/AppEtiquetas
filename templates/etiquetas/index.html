@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-bs-theme="light">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -10,10 +10,63 @@
       crossorigin="anonymous"
     />
     <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.6/dist/htmx.min.js"></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+      crossorigin="anonymous"
+    ></script>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+    />
 
     <title>Generador de Etiquetas</title>
+    <style>
+      #target_etiqueta img,
+      #target_etiqueta_existente img {
+        max-width: 100%;
+        height: auto;
+        max-height: 550px;
+      }
+
+      /* Estilos para el switch del modo oscuro */
+      .theme-switch {
+        position: fixed;
+        top: 15px;
+        right: 15px;
+        z-index: 1030;
+      }
+
+      /* Estilos para los temas */
+      [data-bs-theme="dark"] {
+        --bs-body-bg: #212529;
+        --bs-body-color: #e9ecef;
+      }
+
+      [data-bs-theme="dark"] .card {
+        --bs-card-bg: #343a40;
+      }
+
+      [data-bs-theme="dark"] .form-control {
+        background-color: #2b3035;
+        color: #e9ecef;
+        border-color: #495057;
+      }
+
+      [data-bs-theme="dark"] .form-select {
+        background-color: #2b3035;
+        color: #e9ecef;
+        border-color: #495057;
+      }
+    </style>
   </head>
   <body>
+    <!-- Botón de cambio de tema -->
+    <div class="theme-switch">
+      <button class="btn btn-outline-secondary" id="theme-toggle">
+        <i class="bi bi-sun-fill" id="theme-icon"></i>
+      </button>
+    </div>
     <div class="container">
       <h1 class="my-4">Sistema de Generación de Etiquetas</h1>
 
@@ -57,7 +110,7 @@
           aria-labelledby="manual-tab"
         >
           <div class="row">
-            <div class="col-5">
+            <div class="col-6">
               <form
                 hx-post="{% url 'etiqueta_png' %}"
                 hx-target="#target_etiqueta"
@@ -66,12 +119,12 @@
                 {% csrf_token %}
                 <div class="mb-3">
                   <label for="etiqueta" class="form-label">Código ZPL:</label>
-                  {% if etiqueta %}
+                  {% if descripcion_zpl %}
                   <textarea
                     class="form-control"
                     name="etiqueta"
                     id="etiqueta"
-                    rows="20"
+                    rows="12"
                   >
 {{ descripcion_zpl }}</textarea
                   >
@@ -80,138 +133,135 @@
                     class="form-control"
                     name="etiqueta"
                     id="etiqueta"
-                    rows="20"
+                    rows="12"
                   >
-^XA^CI0^XZ
-^XA
-^MMT
-^PW2362
-^LL2835
-^LS0
-^CI0
-^FO768,2144^GFA,02560,02560,00020,:Z64:
-eJztlTEKwkAQRVclLNhYiWWO4jZia2eZo2gpWHiN4Ck8goWtbI5gESGFcdwkuiY736ioRcARJrA83/58C4Vo8ChVPN77lk9mzh2zInsWZGckidLY4VZmJZyj1J4Nc26Z7TuntSYtzd4rxXy04T7aVu/NfRHgdoBLAHcE+U5VbpytveK+M/ClFY5yjp5yxfvSnHM04flsMaV8thj/ISc5d80XAW4HfHVcOd+B59PIlwBfXOboRe7a36mGK+er+sbA9+18y0/z6d/ma35/8F79Wn9T4OuBfA85p78B4CS41wP9Ia4PfB2QzwNcC/Tnzeq5m28U8P4E8LWAT8y4r/jhHM7nvqJoh+txnxppk8zJJ8G9+Qs7PoG4AHDdcL1uh2YtQvHmqOxj/9r+09S5AO135f8=:B6C8
-
-
-^FO1952,2112
-[@LOGOUSUARIO@]
-
-^FO1671,2176
-[@LOGOADICIONAL2@]
-
-^FO1728,2510
-[@LOGOADICIONAL1@]
-
-
-
-^FT2250,91^A0R,67,67^FH\^FDFRIGORIFICO RIOPLATENSE SAICIF^FS
-^FT1980,91^A0R,52,52^FH\^FDSACRIFICADO EN ARGENTINA: EST.N\F8.OF.1920 / DESPIECE EN ARGENTINA: EST.N\F8.OF.1920^FS
-^FT2050,91^A0R,58,58^FH\^FDORIGEN ARGENTINA / VENTA AL PESO^FS
-^FT2114,91^A0R,58,58^FH\^FDB1617ABL/ GRAL.PACHECO/ PROVINCIA BUENOS AIRES / ARGENTINA^FS
-^FT2180,91^A0R,58,58^FH\^FDAVDA DE LOS CONSTITUYENTES 2499^FS
-
-
-
-^FT1849,1104^A0R,58,57^FH\^FD[@DefinicionesCuartos.sDescripcion@]^FS
-^FT1771,1107^A0R,58,57^FH\^FD[@DefinicionesCuartos.sDescripcion;FI2@]^FS
-^FT1697,1105^A0R,58,57^FH\^FD[@DefinicionesCuartos.sDescripcion;FIIDIOMAVARIABLE@]^FS
-
-^FT1851,56^A0R,58,57^FH\^FD[@Definiciones.sDescripcion@]^FS
-^FT1773,56^A0R,58,57^FH\^FD[@Definiciones.sDescripcion;FI2@]^FS
-^FT1693,56^A0R,58,57^FH\^FD[@Definiciones.sDescripcion;FIIDIOMAVARIABLE@]^FS
-
-^FT1530,5^A0R,117,115^FB2200,1,0,C^FH\^FD[@Mercaderias.sDescripcion@]^FS
-^FT1382,5^A0R,117,115^FB2200,1,0,C^FH\^FD[@MercaderiasTraducciones.sDescripcion2@]^FS
-^FT1234,5^A0R,117,115^FB2200,1,0,C^FH\^FD[@MercaderiasTraducciones.sDescripcion[@IDIOMAVARIABLE@]@]^FS
-
-
-
-^LRY^FO1177,12^GB0,2103,484^FS^LRN
-
-^FT1094,1079^A0R,58,57^FH\^FDPESO NETO /NET WEIGHT /[@Peso Neto[@IDIOMAVARIABLE@]@] ^FS
-^FT974,1106^A0R,92,91^FH\^FD[@Primarias.iPeso;FK0.000@] [@UNIDADMEDIDA146@]^FS
-
-^FT1095,61^A0R,58,57^FH\^FDPARTIDA / LOT / [@Partida[@IDIOMAVARIABLE@]@]^FS
-^FT978,67^A0R,92,91^FH\^FD[@PlanesDetalleSalida.PedidoId@]^FS
-
-^FT1095,790^A0R,58,57^FH\^FDPLAN^FS
-^FT978,740^A0R,92,91^FH\^FD[@PlanesDetalleSalida.PlanId@]^FS
-
-
-^FT794,2266^A0R,42,40^FH\^FDINDUSTRIA ARGENTINA^FS
-^FT851,2267^A0R,42,40^FH\^FDSENASA N\F8 [@CODSENASA@]^FS
-
-^FT420,2800^A0N,55,45^FH\^FD[@Primarias.sCodbar@]^FS
-
-^FT1350,2180^A0R,220,220^FH\^FD[@VARIABLEAMPARO@]^FS
-
-
-^FT828,56^A0R,58,57^FH\^FDCONSERVAR A -18 \F8 C (NO RECONGELAR) / KEEP AT -18 \F8C (DO NOT REFREEZE)^FS
-^FT741,59^A0R,58,57^FH\^FD[@Conservar a -18 \F8CC (no recongelar)[@IDIOMAVARIABLE@]@]^FS
-
-
-^FT600,20^A0R,67,62^FH\^FD[@LEYENDATRAZABILIDAD5@]^FS
-^FT525,20^A0R,67,62^FH\^FD[@LEYENDATRAZABILIDAD6@]^FS
-^FT440,20^A0R,67,62^FH\^FD[@LEYENDATRAZABILIDAD7@]^FS
-
-^FT700,1270^A0R,120,120^FH\^FD[@Contramarcas.sCodigo@]^FS
-
-
-^FT236,2153^A0R,67,67^FH\^FDEXPIRATION DATE ^FS
-^FT324,2150^A0R,67,67^FH\^FDFECHA VENCIMIENTO^FS
-^FT150,2157^A0R,67,67^FH\^FD[@Fecha de vencimiento[@IDIOMAVARIABLE@]@]^FS
-^FT42,2179^A0R,100,98^FH\^FD[@FechaVencimiento.dFecha;FFdd/MM/yyyy@]^FS
-
-^FT323,1471^A0R,67,67^FH\^FDFECHA CONGELACION^FS
-^FT152,1475^A0R,67,67^FH\^FD[@Fecha de congelado[@IDIOMAVARIABLE@]@]^FS
-^FT236,1477^A0R,67,67^FH\^FDDATE OF FREEZING^FS
-^FT52,1489^A0R,100,98^FH\^FD[@FechaCongelado.dFecha;FFdd/MM/yyyy@]^FS
-
-^FT325,763^A0R,67,67^FH\^FDFECHA PRODUCCION^FS
-^FT234,762^A0R,67,67^FH\^FDPRODUCTION DATE^FS
-^FT145,757^A0R,67,67^FH\^FD[@Fecha de producción[@IDIOMAVARIABLE@]@]^FS
-^FT41,784^A0R,100,98^FH\^FD[@Identificadores.dFechaProduccion;FFdd/MM/yyyy@]^FS
-
-
-^FO401,32^GB0,2781,10^FS
-^FO677,42^GB0,2076,8^FS
-^FO19,703^GB382,0,7^FS
-^FO24,1410^GB379,0,9^FS
-^FO1673,1055^GB239,0,11^FS
-^FO931,1050^GB238,0,11^FS
-^FO1166,46^GB0,2783,11^FS
-^FO918,43^GB0,2786,8^FS
-^FO1662,35^GB0,2786,11^FS
-^FO10,2115^GB1909,0,12^FS
-^FO1915,35^GB0,2786,11^FS
-
-^FT490,2600^BQN,2,10
-^FDMA,[@Primarias.sCodbar@]^FS
-
-
-
-^PQ[@COPIAS@],0,1,Y^XZ
+                    ^XA
+                    ^FO50,50^ADN,36,20^FDHola Mundo^FS
+                    ^XZ
 </textarea
                   >
                   {% endif %}
                 </div>
-                <div class="mb-3">
-                  <label for="variable" class="form-label"
-                    >Variables Disponibles:</label
-                  >
-                  <select class="form-select" name="variable" id="variable">
-                    {% for variable in variables %}
-                    <option value="{{ variable }}">{{ variable }}</option>
-                    {% endfor %}
-                  </select>
+                <div class="row">
+                  <div class="col-md-6">
+                    <div class="mb-3">
+                      <label for="variable" class="form-label"
+                        >Variables Disponibles:</label
+                      >
+                      <select class="form-select" name="variable" id="variable">
+                        {% for variable in variables %}
+                        <option value="{{ variable }}">{{ variable }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                  </div>
+
+                  <!-- Nueva sección para la creación de etiquetas -->
+                  <div class="col-md-6">
+                    <div class="mb-3">
+                      <label for="nombre_etiqueta" class="form-label"
+                        >Nombre de etiqueta:</label
+                      >
+                      <input
+                        type="text"
+                        class="form-control"
+                        name="nombre_etiqueta"
+                        id="nombre_etiqueta"
+                        placeholder="Nombre para la etiqueta"
+                      />
+                    </div>
+                  </div>
+
+                  <div class="col-md-4">
+                    <div class="mb-3">
+                      <label for="tipo_etiqueta_manual" class="form-label"
+                        >Tipo:</label
+                      >
+                      <select
+                        class="form-select"
+                        name="tipo_etiqueta_manual"
+                        id="tipo_etiqueta_manual"
+                      >
+                        {% for tipo in tipos_etiquetas %}
+                        <option value="{{ tipo }}">{{ tipo }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="col-md-4">
+                    <div class="mb-3">
+                      <label for="impresora_id" class="form-label"
+                        >Impresora:</label
+                      >
+                      <select
+                        class="form-select"
+                        name="impresora_id"
+                        id="impresora_id"
+                      >
+                        {% for impresora in impresoras %}
+                        <option value="{{ impresora.id }}">
+                          {{ impresora.dpi }} DPI
+                        </option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="col-md-4">
+                    <div class="mb-3">
+                      <label for="insumo_id" class="form-label">Tamaño:</label>
+                      <select
+                        class="form-select"
+                        name="insumo_id"
+                        id="insumo_id"
+                      >
+                        {% for insumo in insumos %}
+                        <option value="{{ insumo.id }}">
+                          {{ insumo.tamanio }}
+                        </option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="col-md-4">
+                    <div class="mb-3">
+                      <label for="rotacion_id" class="form-label"
+                        >Rotación:</label
+                      >
+                      <select
+                        class="form-select"
+                        name="rotacion_id"
+                        id="rotacion_id"
+                      >
+                        {% for rotacion in rotaciones %}
+                        <option value="{{ rotacion.id }}">
+                          {{ rotacion.angulo }}°
+                        </option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                  </div>
                 </div>
-                <button class="btn btn-primary" type="submit">
-                  Generar etiqueta
-                </button>
+
+                <div class="d-flex gap-2">
+                  <button
+                    class="btn btn-success"
+                    type="button"
+                    onclick="guardarNuevaEtiqueta()"
+                  >
+                    Crear etiqueta
+                  </button>
+                </div>
               </form>
             </div>
-            <div class="col-7">
-              <div id="target_etiqueta" class="text-center mt-4"></div>
+            <div class="col-6">
+              <div id="target_etiqueta" class="text-center mt-4">
+                <div class="alert alert-info mb-3" id="config_info_manual">
+                  Seleccione impresora, tamaño y rotación para previsualizar
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -224,16 +274,13 @@ eJztlTEKwkAQRVclLNhYiWWO4jZia2eZo2gpWHiN4Ck8goWtbI5gESGFcdwkuiY736ioRcARJrA83/58
           aria-labelledby="etiquetas-tab"
         >
           <div class="row">
-            <div class="col-5">
-              <form
-                hx-post="{% url 'etiqueta_png' %}"
-                hx-target="#target_etiqueta_existente"
-                hx-swap="innerHTML"
-                id="etiquetasForm"
-              >
+            <div class="col-6">
+              <form id="etiquetasForm">
                 {% csrf_token %}
                 <div class="mb-3">
-                  <label for="tipo_etiqueta" class="form-label">Seleccione el tipo:</label>
+                  <label for="tipo_etiqueta" class="form-label"
+                    >Seleccione el tipo:</label
+                  >
                   <select
                     class="form-select"
                     name="tipo_etiqueta"
@@ -246,37 +293,139 @@ eJztlTEKwkAQRVclLNhYiWWO4jZia2eZo2gpWHiN4Ck8goWtbI5gESGFcdwkuiY736ioRcARJrA83/58
                     {% endfor %}
                   </select>
                 </div>
-                
+
                 <div class="mb-3">
-                  <label for="etiqueta_id" class="form-label">Seleccione una etiqueta:</label>
+                  <label for="etiqueta_id" class="form-label"
+                    >Seleccione una etiqueta:</label
+                  >
                   <select
                     class="form-select"
                     name="etiqueta_id"
                     id="etiqueta_id"
                   >
                     <option value="">-- Seleccione una etiqueta --</option>
-                    {% if etiquetas %}
-                      {% for etiqueta in etiquetas %}
-                      <option value="{{ etiqueta.id }}" data-tipo="{{ etiqueta.tipo_etiqueta }}">
-                        {{ etiqueta.nombre }} ({{ etiqueta.tipo_etiqueta }})
-                      </option>
-                      {% endfor %}
-                    {% else %}
-                      <option value="">No hay etiquetas disponibles</option>
+                    {% if etiquetas %} {% for etiqueta in etiquetas %}
+                    <option
+                      value="{{ etiqueta.id }}"
+                      data-tipo="{{ etiqueta.tipo_etiqueta }}"
+                    >
+                      {{ etiqueta.nombre }} ({{ etiqueta.tipo_etiqueta }})
+                    </option>
+                    {% endfor %} {% else %}
+                    <option value="">No hay etiquetas disponibles</option>
                     {% endif %}
                   </select>
                 </div>
-                
-                <button class="btn btn-primary" type="submit">
-                  Generar etiqueta
-                </button>
+
+                <div class="mb-3" id="zplEditorContainer" style="display: none">
+                  <label for="zpl_editor" class="form-label">Código ZPL:</label>
+                  <textarea
+                    class="form-control"
+                    name="zpl_editor"
+                    id="zpl_editor"
+                    rows="12"
+                  ></textarea>
+                </div>
+
+                <div
+                  class="row"
+                  id="configExistenteContainer"
+                  style="display: none"
+                >
+                  <div class="col-md-4">
+                    <div class="mb-3">
+                      <label for="impresora_id_existente" class="form-label"
+                        >Impresora:</label
+                      >
+                      <select
+                        class="form-select"
+                        name="impresora_id_existente"
+                        id="impresora_id_existente"
+                      >
+                        {% for impresora in impresoras %}
+                        <option value="{{ impresora.id }}">
+                          {{ impresora.dpi }} DPI
+                        </option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="col-md-4">
+                    <div class="mb-3">
+                      <label for="insumo_id_existente" class="form-label"
+                        >Tamaño:</label
+                      >
+                      <select
+                        class="form-select"
+                        name="insumo_id_existente"
+                        id="insumo_id_existente"
+                      >
+                        {% for insumo in insumos %}
+                        <option value="{{ insumo.id }}">
+                          {{ insumo.tamanio }}
+                        </option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="col-md-4">
+                    <div class="mb-3">
+                      <label for="rotacion_id_existente" class="form-label"
+                        >Rotación:</label
+                      >
+                      <select
+                        class="form-select"
+                        name="rotacion_id_existente"
+                        id="rotacion_id_existente"
+                      >
+                        {% for rotacion in rotaciones %}
+                        <option value="{{ rotacion.id }}">
+                          {{ rotacion.angulo }}°
+                        </option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div
+                  class="mb-3"
+                  id="nombreActualContainer"
+                  style="display: none"
+                >
+                  <label for="nombre_etiqueta_actual" class="form-label"
+                    >Nombre de la etiqueta:</label
+                  >
+                  <input
+                    type="text"
+                    class="form-control"
+                    name="nombre_etiqueta_actual"
+                    id="nombre_etiqueta_actual"
+                    placeholder="Nombre de la etiqueta actual"
+                  />
+                </div>
+
+                <div class="d-flex gap-2">
+                  <button
+                    class="btn btn-success"
+                    type="button"
+                    id="btnGuardarZPL"
+                    onclick="guardarZPL()"
+                    style="display: none"
+                  >
+                    Guardar cambios
+                  </button>
+                </div>
               </form>
             </div>
-            <div class="col-7">
-              <div
-                id="target_etiqueta_existente"
-                class="text-center mt-4"
-              ></div>
+            <div class="col-6">
+              <div id="target_etiqueta_existente" class="text-center mt-4">
+                <div class="alert alert-info mb-3" id="config_info_existente">
+                  Seleccione una etiqueta para previsualizar
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -287,39 +436,1745 @@ eJztlTEKwkAQRVclLNhYiWWO4jZia2eZo2gpWHiN4Ck8goWtbI5gESGFcdwkuiY736ioRcARJrA83/58
       integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
       crossorigin="anonymous"
     ></script>
-      
+
     <script>
+      // Variables globales para la gestión de etiquetas
+      let etiquetaActualId = null;
+      let timeoutManual = null; // Variable para controlar el debounce en edición manual
+      let timeoutExistente = null; // Variable para controlar el debounce en etiquetas existentes
+
+      // Función para actualizar la UI cuando se carga una etiqueta
+      function actualizarUIEtiquetaCargada(mostrar) {
+        try {
+          // Elementos que deben mostrarse/ocultarse cuando se carga una etiqueta
+          const elementosUI = [
+            "zplEditorContainer",
+            "btnGuardarZPL",
+            "configExistenteContainer",
+            "nombreActualContainer", // Incluir el contenedor del nombre
+          ];
+
+          // Mostrar u ocultar elementos según el parámetro
+          elementosUI.forEach((id) => {
+            const elemento = document.getElementById(id);
+            if (elemento) {
+              elemento.style.display = mostrar
+                ? id === "configExistenteContainer"
+                  ? "flex"
+                  : "block"
+                : "none";
+              console.log(
+                `${mostrar ? "Mostrando" : "Ocultando"} elemento: ${id}`
+              );
+            } else {
+              console.warn(`Elemento no encontrado: ${id}`);
+            }
+          });
+
+          // Si no se muestra, limpiar valores
+          if (!mostrar) {
+            const zplEditor = document.getElementById("zpl_editor");
+            const nombreEtiquetaInput = document.getElementById(
+              "nombre_etiqueta_actual"
+            );
+
+            if (zplEditor) zplEditor.value = "";
+            if (nombreEtiquetaInput) nombreEtiquetaInput.value = "";
+
+            etiquetaActualId = null;
+          }
+        } catch (err) {
+          console.error("Error en actualizarUIEtiquetaCargada:", err);
+        }
+      }
+
+      let configActualManual = {
+        impresora: null,
+        insumo: null,
+        rotacion: null,
+      };
+      let configActualExistente = {
+        impresora: null,
+        insumo: null,
+        rotacion: null,
+      };
+
       // Función para filtrar las etiquetas según el tipo seleccionado
       function filtrarEtiquetas() {
-        const tipoSeleccionado = document.getElementById('tipo_etiqueta').value;
-        const selectEtiquetas = document.getElementById('etiqueta_id');
-        const opciones = selectEtiquetas.options;
-        
-        // Reiniciar el select de etiquetas
-        selectEtiquetas.selectedIndex = 0;
-        
-        // Mostrar/ocultar opciones según el tipo seleccionado
-        for (let i = 1; i < opciones.length; i++) {
-          const opcion = opciones[i];
-          const tipoEtiqueta = opcion.getAttribute('data-tipo');
-          
-          if (!tipoSeleccionado || tipoEtiqueta === tipoSeleccionado) {
-            opcion.style.display = '';
-          } else {
-            opcion.style.display = 'none';
+        try {
+          const tipoSeleccionado =
+            document.getElementById("tipo_etiqueta").value;
+          const selectEtiquetas = document.getElementById("etiqueta_id");
+          const opciones = selectEtiquetas.options;
+
+          // Reiniciar el select de etiquetas
+          selectEtiquetas.selectedIndex = 0;
+          document.getElementById("zplEditorContainer").style.display = "none";
+          document.getElementById("btnGuardarZPL").style.display = "none";
+          document.getElementById("configExistenteContainer").style.display =
+            "none";
+
+          // Ocultar también el contenedor del nombre de la etiqueta
+          const nombreActualContainer = document.getElementById(
+            "nombreActualContainer"
+          );
+          if (nombreActualContainer) {
+            nombreActualContainer.style.display = "none";
+            console.log(
+              "Ocultando contenedor de nombre al cambiar tipo de etiqueta"
+            );
+          }
+
+          document.getElementById("zpl_editor").value = "";
+          etiquetaActualId = null;
+
+          // Restablecer el div de información
+          document.getElementById("config_info_existente").innerHTML =
+            "Seleccione una etiqueta para previsualizar";
+
+          document.getElementById("target_etiqueta_existente").innerHTML =
+            '<div class="alert alert-info mb-3" id="config_info_existente">Seleccione una etiqueta para previsualizar</div>';
+
+          // Mostrar/ocultar opciones según el tipo seleccionado
+          let opcionesVisibles = 0;
+          for (let i = 1; i < opciones.length; i++) {
+            const opcion = opciones[i];
+            const tipoEtiqueta = opcion.getAttribute("data-tipo");
+
+            if (!tipoSeleccionado || tipoEtiqueta === tipoSeleccionado) {
+              opcion.style.display = "";
+              opcionesVisibles++;
+            } else {
+              opcion.style.display = "none";
+            }
+          }
+
+          // Verificar si hay etiquetas disponibles para el tipo seleccionado
+          if (opcionesVisibles === 0 && tipoSeleccionado) {
+            document.getElementById(
+              "config_info_existente"
+            ).innerHTML = `<div class="alert alert-warning">No hay etiquetas disponibles para el tipo: ${tipoSeleccionado}</div>`;
+          }
+        } catch (err) {
+          document.getElementById(
+            "config_info_existente"
+          ).innerHTML = `<div class="alert alert-danger">Error al filtrar etiquetas: ${err.message}</div>`;
+        }
+      }
+
+      // Función para cargar el ZPL de una etiqueta seleccionada
+      function cargarZPL(etiquetaId) {
+        try {
+          if (!etiquetaId) {
+            // Ocultar todos los elementos UI
+            actualizarUIEtiquetaCargada(false);
+
+            // Limpiar campos
+            document.getElementById("zpl_editor").value = "";
+            document.getElementById("nombre_etiqueta_actual").value = "";
+            // Ya no necesitamos esto porque eliminamos el contenedor
+            // document.getElementById("nombre_nueva_etiqueta").value = "";
+            etiquetaActualId = null;
+
+            // Resetear mensajes
+            document.getElementById("config_info_existente").innerHTML =
+              "Seleccione una etiqueta para previsualizar";
+            document.getElementById("target_etiqueta_existente").innerHTML =
+              '<div class="alert alert-info mb-3" id="config_info_existente">Seleccione una etiqueta para previsualizar</div>';
+            return;
+          }
+
+          // Guardar el ID de la etiqueta seleccionada
+          etiquetaActualId = etiquetaId;
+
+          // Obtener el nombre actual de la etiqueta seleccionada
+          const etiquetaOption = document.querySelector(
+            `#etiqueta_id option[value="${etiquetaId}"]`
+          );
+          const nombreEtiqueta = etiquetaOption ? etiquetaOption.text : "";
+
+          // Mostrar todos los elementos UI para edición
+          actualizarUIEtiquetaCargada(true);
+
+          // Establecer el nombre actual de la etiqueta
+          document.getElementById("nombre_etiqueta_actual").value =
+            nombreEtiqueta;
+
+          // Mostrar mensaje de carga
+          document.getElementById(
+            "config_info_existente"
+          ).innerHTML = `<div class="alert alert-info">
+              <div class="spinner-border spinner-border-sm text-primary me-2" role="status">
+                <span class="visually-hidden">Cargando...</span>
+              </div>
+              Cargando etiqueta...
+            </div>`;
+
+          // Construir la URL con URL reversa para asegurar que la ruta es correcta
+          const baseUrl = "{% url 'get_zpl' 0 %}";
+          // Verificar que la URL base se construye correctamente
+          if (!baseUrl || baseUrl === "{% url 'get_zpl' 0 %}") {
+            throw new Error(
+              "Error al construir la URL. No se pudo utilizar la etiqueta de plantilla."
+            );
+          }
+
+          const url = baseUrl.replace("/0/", `/${etiquetaId}/`);
+          console.log("URL construida:", url);
+
+          // Configuración de la solicitud
+          const requestOptions = {
+            method: "GET",
+            headers: {
+              Accept: "application/json",
+              "X-Requested-With": "XMLHttpRequest",
+            },
+            cache: "no-store", // Evitar caché
+          };
+
+          // Solicitar el contenido ZPL de la etiqueta seleccionada y sus datos de configuración
+          fetch(url, requestOptions)
+            .then((response) => {
+              console.log(
+                "Respuesta recibida:",
+                response.status,
+                response.statusText
+              );
+              if (!response.ok) {
+                throw new Error(
+                  `Error HTTP: ${response.status} - ${response.statusText}`
+                );
+              }
+              return response.json().catch((err) => {
+                console.error("Error al parsear JSON:", err);
+                throw new Error("El servidor no devolvió un JSON válido");
+              });
+            })
+            .then((data) => {
+              console.log("ZPL cargado correctamente:", data);
+
+              if (!data || (typeof data.zpl === "undefined" && !data.error)) {
+                throw new Error(
+                  "La respuesta no contiene datos ZPL ni un mensaje de error"
+                );
+              }
+
+              if (data.error) {
+                throw new Error(`Error del servidor: ${data.error}`);
+              }
+
+              // Mostrar el editor ZPL y el botón de guardar
+              document.getElementById("zplEditorContainer").style.display =
+                "block";
+              document.getElementById("btnGuardarZPL").style.display =
+                "inline-block";
+              document.getElementById(
+                "configExistenteContainer"
+              ).style.display = "flex";
+
+              // Cargar el ZPL en el editor
+              const zplEditor = document.getElementById("zpl_editor");
+              if (!zplEditor) {
+                throw new Error("No se encontró el elemento zpl_editor");
+              }
+              zplEditor.value = data.zpl || "";
+
+              if (!data.zpl || data.zpl.trim() === "") {
+                console.warn("El ZPL recibido está vacío");
+                document.getElementById(
+                  "config_info_existente"
+                ).innerHTML = `<div class="alert alert-warning">La etiqueta no contiene código ZPL</div>`;
+                return;
+              }
+
+              // Actualizar la información de configuración
+              if (data.config) {
+                console.log("Config recibida:", data.config);
+
+                // Verificar que todos los selectores existen
+                const impresoraEl = document.getElementById(
+                  "impresora_id_existente"
+                );
+                const insumoEl = document.getElementById("insumo_id_existente");
+                const rotacionEl = document.getElementById(
+                  "rotacion_id_existente"
+                );
+
+                if (!impresoraEl || !insumoEl || !rotacionEl) {
+                  console.error(
+                    "No se encontraron todos los selectores de configuración"
+                  );
+                  throw new Error(
+                    "No se encontraron los selectores de configuración necesarios"
+                  );
+                }
+
+                // Establecer los valores de los selectores
+                impresoraEl.value = data.config.impresora_id;
+                insumoEl.value = data.config.insumo_id;
+                rotacionEl.value = data.config.rotacion_id;
+
+                actualizarInfoConfigExistente(data.config);
+                configActualExistente = {
+                  impresora: data.config.impresora_id,
+                  insumo: data.config.insumo_id,
+                  rotacion: data.config.rotacion_id,
+                };
+
+                // Generar previsualización inmediatamente
+                generarPreviewInmediato(data.zpl, data.config);
+              } else {
+                console.warn(
+                  "No se recibieron datos de configuración completos"
+                );
+                document.getElementById(
+                  "config_info_existente"
+                ).innerHTML += `<div class="alert alert-warning">No se recibió la configuración completa de la etiqueta</div>`;
+              }
+            })
+            .catch((error) => {
+              console.error("Error al cargar ZPL:", error);
+              document.getElementById("zplEditorContainer").style.display =
+                "none";
+              document.getElementById("btnGuardarZPL").style.display = "none";
+              document.getElementById(
+                "configExistenteContainer"
+              ).style.display = "none";
+              document.getElementById(
+                "config_info_existente"
+              ).innerHTML = `<div class="alert alert-danger">Error al cargar el ZPL: ${error.message}</div>`;
+            });
+        } catch (err) {
+          console.error("Error en cargarZPL:", err);
+          // Ocultar todos los elementos UI
+          actualizarUIEtiquetaCargada(false);
+          document.getElementById(
+            "config_info_existente"
+          ).innerHTML = `<div class="alert alert-danger">Error general: ${err.message}</div>`;
+        }
+      }
+
+      // Función para generar la etiqueta with el ZPL actual
+      function generarEtiqueta(isPreview = false) {
+        try {
+          if (!etiquetaActualId) {
+            if (!isPreview) {
+              alert("Por favor, seleccione una etiqueta");
+            }
+            console.warn("No hay etiqueta seleccionada");
+            return;
+          }
+
+          // Obtener y validar el ZPL
+          const zplEditor = document.getElementById("zpl_editor");
+          if (!zplEditor) {
+            console.error("Elemento zpl_editor no encontrado");
+            document.getElementById(
+              "config_info_existente"
+            ).innerHTML = `<div class="alert alert-danger">Error: Editor ZPL no encontrado</div>`;
+            return;
+          }
+
+          const zpl = zplEditor.value;
+          if (!zpl || zpl.trim() === "") {
+            console.warn("ZPL vacío en generarEtiqueta");
+            document.getElementById(
+              "config_info_existente"
+            ).innerHTML = `<div class="alert alert-warning">El código ZPL no puede estar vacío</div>`;
+            return;
+          }
+
+          // Obtener el token CSRF
+          const csrfTokenElement = document.querySelector(
+            "[name=csrfmiddlewaretoken]"
+          );
+          if (!csrfTokenElement) {
+            console.error("Token CSRF no encontrado");
+            document.getElementById(
+              "config_info_existente"
+            ).innerHTML = `<div class="alert alert-danger">Error: Token CSRF no encontrado</div>`;
+            return;
+          }
+          const csrfToken = csrfTokenElement.value;
+
+          // Obtener configuración seleccionada
+          const impresoraEl = document.getElementById("impresora_id_existente");
+          const insumoEl = document.getElementById("insumo_id_existente");
+          const rotacionEl = document.getElementById("rotacion_id_existente");
+
+          if (!impresoraEl || !insumoEl || !rotacionEl) {
+            console.error("No se encontraron los selectores de configuración", {
+              impresora: !!impresoraEl,
+              insumo: !!insumoEl,
+              rotacion: !!rotacionEl,
+            });
+            document.getElementById(
+              "config_info_existente"
+            ).innerHTML = `<div class="alert alert-danger">Error: No se encontraron todos los selectores de configuración</div>`;
+            return;
+          }
+
+          // Verificar que los selectores tengan opciones seleccionadas
+          const impresoraId = impresoraEl.value;
+          const insumoId = insumoEl.value;
+          const rotacionId = rotacionEl.value;
+
+          if (!impresoraId || !insumoId || !rotacionId) {
+            console.error("Valores de configuración faltantes", {
+              impresora: !!impresoraId,
+              insumo: !!insumoId,
+              rotacion: !!rotacionId,
+            });
+            document.getElementById(
+              "config_info_existente"
+            ).innerHTML = `<div class="alert alert-warning">Debe seleccionar impresora, tamaño y rotación</div>`;
+            return;
+          }
+
+          console.log("Generando etiqueta con config:", {
+            etiquetaId: etiquetaActualId,
+            zplLength: zpl.length,
+            impresora: impresoraId,
+            insumo: insumoId,
+            rotacion: rotacionId,
+          });
+
+          // Crear un formulario temporal para enviar los datos
+          const formData = new FormData();
+          formData.append("etiqueta_id", etiquetaActualId);
+          formData.append("csrfmiddlewaretoken", csrfToken);
+          formData.append("zpl_custom", zpl);
+          formData.append("impresora_id", impresoraId);
+          formData.append("insumo_id", insumoId);
+          formData.append("rotacion_id", rotacionId);
+
+          // Mostrar spinner de carga mientras se genera la etiqueta
+          const spinnerHTML = `
+            <div id="spinner-existente" class="text-center my-3">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Generando etiqueta...</span>
+              </div>
+              <div class="mt-2">Generando etiqueta...</div>
+            </div>
+          `;
+          document.getElementById("target_etiqueta_existente").innerHTML =
+            document.getElementById("config_info_existente").outerHTML +
+            spinnerHTML;
+
+          // Actualizar la información de configuración con los nuevos valores
+          try {
+            const config = {
+              impresora: impresoraEl.options[impresoraEl.selectedIndex].text,
+              insumo: insumoEl.options[insumoEl.selectedIndex].text,
+              rotacion: rotacionEl.options[rotacionEl.selectedIndex].text,
+              impresora_id: impresoraId,
+              insumo_id: insumoId,
+              rotacion_id: rotacionId,
+            };
+            actualizarInfoConfigExistente(config);
+          } catch (configErr) {
+            console.error("Error al actualizar la configuración:", configErr);
+          }
+
+          // URL para la solicitud
+          const url = "{% url 'etiqueta_png' %}";
+          console.log("Enviando solicitud a:", url);
+
+          // Enviar la solicitud para generar la etiqueta
+          fetch(url, {
+            method: "POST",
+            body: formData,
+            headers: {
+              "X-Requested-With": "XMLHttpRequest", // Indicar que es una solicitud AJAX
+            },
+          })
+            .then((response) => {
+              console.log("Respuesta recibida:", response.status);
+              if (!response.ok) {
+                throw new Error(
+                  `Error HTTP: ${response.status} - ${response.statusText}`
+                );
+              }
+              return response.text();
+            })
+            .then((html) => {
+              console.log("HTML recibido, longitud:", html.length);
+              // Verificar si la respuesta contiene algún error
+              if (html.includes("Error") && html.includes("alert-danger")) {
+                console.error(
+                  "Respuesta contiene error:",
+                  html.substring(0, 200) + "..."
+                );
+                const errorMatch = html.match(
+                  /<div class="alert alert-danger">(.*?)<\/div>/
+                );
+                if (errorMatch && errorMatch[1]) {
+                  document.getElementById(
+                    "config_info_existente"
+                  ).innerHTML = `<div class="alert alert-danger">${errorMatch[1]}</div>`;
+                } else {
+                  document.getElementById(
+                    "config_info_existente"
+                  ).innerHTML = `<div class="alert alert-danger">Error al generar la etiqueta</div>`;
+                }
+                return;
+              }
+
+              // Conservar el div de configuración y agregar la imagen
+              const configInfo = document.getElementById(
+                "config_info_existente"
+              ).outerHTML;
+              document.getElementById("target_etiqueta_existente").innerHTML =
+                configInfo + html;
+              console.log("Previsualización actualizada correctamente");
+            })
+            .catch((error) => {
+              console.error("Error en fetch de generarEtiqueta:", error);
+              document.getElementById(
+                "config_info_existente"
+              ).innerHTML = `<div class="alert alert-danger">Error al generar la etiqueta: ${error.message}</div>`;
+              if (!isPreview) {
+                alert("Error al generar la etiqueta: " + error.message);
+              }
+            });
+        } catch (err) {
+          console.error("Error general en generarEtiqueta:", err);
+          document.getElementById(
+            "config_info_existente"
+          ).innerHTML = `<div class="alert alert-danger">Error general: ${err.message}</div>`;
+          if (!isPreview) {
+            alert("Error al procesar la etiqueta: " + err.message);
           }
         }
       }
-      
-      // Inicializar el filtro cuando la página cargue
-      document.addEventListener('DOMContentLoaded', function() {
+
+      // Función para guardar los cambios del ZPL en la base de datos
+      function guardarZPL() {
+        if (!etiquetaActualId) {
+          alert("Por favor, seleccione una etiqueta");
+          return;
+        }
+
+        const zpl = document.getElementById("zpl_editor").value;
+        const nombre = document.getElementById("nombre_etiqueta_actual").value;
+        const csrfToken = document.querySelector(
+          "[name=csrfmiddlewaretoken]"
+        ).value;
+
+        // Crear un formulario temporal para enviar los datos
+        const formData = new FormData();
+        formData.append("etiqueta_id", etiquetaActualId);
+        formData.append("csrfmiddlewaretoken", csrfToken);
+        formData.append("zpl", zpl);
+        formData.append("nombre", nombre);
+
+        // Enviar la solicitud para actualizar el ZPL
+        fetch("{% url 'actualizar_zpl' %}", {
+          method: "POST",
+          body: formData,
+        })
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("Error al actualizar el ZPL");
+            }
+            return response.json();
+          })
+          .then((data) => {
+            if (data.success) {
+              alert("ZPL actualizado correctamente");
+              // Actualizar la previsualización con los cambios guardados
+              generarEtiqueta(true);
+            } else {
+              alert("Error al actualizar el ZPL: " + data.error);
+            }
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+            alert("Error al actualizar el ZPL");
+          });
+      }
+
+      // Función para visualizar la etiqueta con los valores seleccionados
+      function visualizarEtiquetaCompleta() {
+        try {
+          // Obtener los valores de los campos
+          const tipoEtiqueta = document.getElementById(
+            "tipo_etiqueta_manual"
+          ).value;
+          const impresoraId = document.getElementById("impresora_id").value;
+          const insumoId = document.getElementById("insumo_id").value;
+          const rotacionId = document.getElementById("rotacion_id").value;
+          const zpl = document.getElementById("etiqueta").value;
+          const csrfToken = document.querySelector(
+            "[name=csrfmiddlewaretoken]"
+          ).value;
+
+          // Validar que tengamos los datos mínimos necesarios
+          if (!impresoraId || !insumoId || !rotacionId || !zpl) {
+            alert(
+              "Por favor seleccione impresora, insumo, rotación e ingrese código ZPL"
+            );
+            return;
+          }
+
+          // Actualizar la información de configuración
+          actualizarInfoConfigManual();
+
+          // Mostrar spinner mientras se carga la etiqueta
+          const spinnerHTML = `
+            <div id="spinner-preview" class="text-center my-3">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando etiqueta...</span>
+              </div>
+              <div class="mt-2">Cargando etiqueta...</div>
+            </div>
+          `;
+          document.getElementById("target_etiqueta").innerHTML =
+            document.getElementById("config_info_manual").outerHTML +
+            spinnerHTML;
+
+          // Crear un formulario temporal para enviar los datos
+          const formData = new FormData();
+          formData.append("impresora_id", impresoraId);
+          formData.append("insumo_id", insumoId);
+          formData.append("rotacion_id", rotacionId);
+          formData.append("tipo_etiqueta", tipoEtiqueta);
+          formData.append("zpl", zpl);
+          formData.append("csrfmiddlewaretoken", csrfToken);
+          formData.append("preview", "true"); // Indicar que es una previsualización
+
+          // Enviar la solicitud para visualizar la etiqueta
+          fetch("{% url 'visualizar_etiqueta' %}", {
+            method: "POST",
+            body: formData,
+          })
+            .then((response) => {
+              if (!response.ok) {
+                throw new Error(`Error HTTP: ${response.status}`);
+              }
+              return response.text();
+            })
+            .then((html) => {
+              // Conservar el div de configuración y agregar la imagen
+              const configInfo =
+                document.getElementById("config_info_manual").outerHTML;
+              document.getElementById("target_etiqueta").innerHTML =
+                configInfo + html;
+            })
+            .catch((error) => {
+              console.error("Error en visualizarEtiquetaCompleta:", error);
+              alert("Error al visualizar la etiqueta: " + error.message);
+            });
+        } catch (err) {
+          console.error("Error general en visualizarEtiquetaCompleta:", err);
+          alert("Error al procesar la visualización: " + err.message);
+        }
+      }
+
+      // Función para guardar una nueva etiqueta desde la edición manual
+      function guardarNuevaEtiqueta() {
+        // Obtener los valores de los campos
+        const nombre = document.getElementById("nombre_etiqueta").value;
+        const tipoEtiqueta = document.getElementById(
+          "tipo_etiqueta_manual"
+        ).value;
+        const impresoraId = document.getElementById("impresora_id").value;
+        const insumoId = document.getElementById("insumo_id").value;
+        const rotacionId = document.getElementById("rotacion_id").value;
+        const zpl = document.getElementById("etiqueta").value;
+        const csrfToken = document.querySelector(
+          "[name=csrfmiddlewaretoken]"
+        ).value;
+
+        // Validar que los campos obligatorios estén completos
+        if (
+          !nombre ||
+          !tipoEtiqueta ||
+          !impresoraId ||
+          !insumoId ||
+          !rotacionId ||
+          !zpl
+        ) {
+          alert("Por favor complete todos los campos obligatorios");
+          return;
+        }
+
+        // Crear un formulario temporal para enviar los datos
+        const formData = new FormData();
+        formData.append("nombre", nombre);
+        formData.append("tipo_etiqueta", tipoEtiqueta);
+        formData.append("impresora_id", impresoraId);
+        formData.append("insumo_id", insumoId);
+        formData.append("rotacion_id", rotacionId);
+        formData.append(
+          "contenido_zpl",
+          document.getElementById("etiqueta").value
+        );
+        formData.append("csrfmiddlewaretoken", csrfToken);
+
+        // Enviar la solicitud para crear la etiqueta
+        fetch("{% url 'crear_etiqueta' %}", {
+          method: "POST",
+          body: formData,
+        })
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("Error al crear la etiqueta");
+            }
+            return response.json();
+          })
+          .then((data) => {
+            if (data.success) {
+              alert(
+                "Etiqueta creada correctamente con ID: " + data.etiqueta_id
+              );
+              // Opcional: Limpiar el formulario o redirigir a la etiqueta creada
+              document.getElementById("nombre_etiqueta").value = "";
+            } else {
+              alert("Error al crear la etiqueta: " + data.error);
+            }
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+            alert("Error al crear la etiqueta");
+          });
+      }
+
+      // Inicializar cuando la página cargue
+      // Función para verificar el estado del entorno
+      function verificarEntorno() {
+        console.group("Diagnóstico del entorno de etiquetas");
+
+        // Verificar componentes críticos
+        const componentes = {
+          "Selector de tipo de etiqueta":
+            document.getElementById("tipo_etiqueta"),
+          "Selector de etiqueta": document.getElementById("etiqueta_id"),
+          "Editor ZPL": document.getElementById("zpl_editor"),
+          "Contenedor del editor":
+            document.getElementById("zplEditorContainer"),
+          "Selector de impresora": document.getElementById(
+            "impresora_id_existente"
+          ),
+          "Selector de insumo": document.getElementById("insumo_id_existente"),
+          "Selector de rotación": document.getElementById(
+            "rotacion_id_existente"
+          ),
+          "Contenedor de configuración": document.getElementById(
+            "configExistenteContainer"
+          ),
+          "Área de información de config": document.getElementById(
+            "config_info_existente"
+          ),
+          "Contenedor de previsualización": document.getElementById(
+            "target_etiqueta_existente"
+          ),
+          "Token CSRF": document.querySelector("[name=csrfmiddlewaretoken]"),
+        };
+
+        let hayErrores = false;
+
+        // Verificar cada componente
+        for (const [nombre, elemento] of Object.entries(componentes)) {
+          if (!elemento) {
+            console.error(`❌ No se encontró: ${nombre}`);
+            hayErrores = true;
+          } else {
+            console.log(`✅ ${nombre} OK`);
+          }
+        }
+
+        // Verificar URL base
+        try {
+          const baseUrl = "{% url 'get_zpl' 0 %}";
+          if (baseUrl.includes("/0/") || baseUrl.includes("=0")) {
+            console.log(`✅ URL base para get_zpl configurada: ${baseUrl}`);
+          } else {
+            console.warn(
+              `⚠️ La URL base no tiene el formato esperado: ${baseUrl}`
+            );
+            // No lo consideramos como error crítico
+          }
+        } catch (e) {
+          console.error("❌ Error al verificar URL base:", e);
+          hayErrores = true;
+        }
+
+        // Resultado final
+        if (hayErrores) {
+          console.error("❌ Se encontraron problemas en el entorno");
+        } else {
+          console.log("✅ Entorno validado correctamente");
+        }
+
+        console.groupEnd();
+        return !hayErrores;
+      }
+
+      document.addEventListener("DOMContentLoaded", function () {
+        console.log("🚀 Inicializando aplicación de etiquetas");
+
         // Inicializar el filtro
         filtrarEtiquetas();
-        
-        // Asegurar que el filtro se aplique cuando cambie de pestaña
-        const etiquetasTab = document.getElementById('etiquetas-tab');
-        etiquetasTab.addEventListener('shown.bs.tab', filtrarEtiquetas);
+
+        // Verificar el entorno antes de configurar eventos
+        const entornoOK = verificarEntorno();
+
+        if (entornoOK) {
+          console.log("✅ Configurando eventos de la aplicación");
+
+          // Asegurar que el filtro se aplique cuando cambie de pestaña
+          const manualTab = document.getElementById("manual-tab");
+          if (manualTab) {
+            manualTab.addEventListener("shown.bs.tab", function () {
+              console.log("🔄 Cambiando a pestaña de edición manual");
+              verificarEntorno();
+              // Forzar actualización de previsualización
+              setTimeout(function () {
+                actualizarPrevisualizacionManual();
+              }, 100);
+            });
+          }
+
+          const etiquetasTab = document.getElementById("etiquetas-tab");
+          if (etiquetasTab) {
+            etiquetasTab.addEventListener("shown.bs.tab", function () {
+              console.log("🔄 Cambiando a pestaña de etiquetas existentes");
+              filtrarEtiquetas();
+              verificarEntorno();
+              // Si hay una etiqueta seleccionada, actualizar su previsualización
+              const etiquetaIdSelect = document.getElementById("etiqueta_id");
+              if (etiquetaIdSelect && etiquetaIdSelect.value) {
+                setTimeout(function () {
+                  cargarYVisualizarEtiqueta(etiquetaIdSelect.value);
+                }, 100);
+              }
+            });
+          }
+
+          // Agregar listeners para actualización en tiempo real en modo manual
+          const elementosManual = [
+            { id: "etiqueta", evento: "input" },
+            { id: "impresora_id", evento: "change" },
+            { id: "insumo_id", evento: "change" },
+            { id: "rotacion_id", evento: "change" },
+            { id: "nombre_etiqueta", evento: "input" },
+            { id: "tipo_etiqueta_manual", evento: "change" },
+          ];
+
+          elementosManual.forEach((item) => {
+            const el = document.getElementById(item.id);
+            if (el) {
+              el.addEventListener(
+                item.evento,
+                actualizarPrevisualizacionManual
+              );
+              console.log(`✅ Listener agregado para ${item.id}`);
+            } else {
+              console.warn(`⚠️ No se pudo agregar listener para ${item.id}`);
+            }
+          });
+
+          // Configurar el selector de etiquetas
+          const etiquetaIdSelect = document.getElementById("etiqueta_id");
+          if (etiquetaIdSelect) {
+            etiquetaIdSelect.addEventListener("change", function () {
+              const etiquetaId = this.value;
+              console.log(`🔄 Seleccionada etiqueta con ID: ${etiquetaId}`);
+              if (etiquetaId) {
+                // Mostrar spinner de carga
+                const spinnerHTML = `
+                  <div id="spinner-carga-etiqueta" class="text-center my-3">
+                    <div class="spinner-border text-primary" role="status">
+                      <span class="visually-hidden">Cargando etiqueta...</span>
+                    </div>
+                    <div class="mt-2">Cargando etiqueta...</div>
+                  </div>
+                `;
+                document.getElementById("target_etiqueta_existente").innerHTML =
+                  `<div class="alert alert-info mb-3" id="config_info_existente">Cargando etiqueta...</div>` +
+                  spinnerHTML;
+
+                // Cargar y visualizar la etiqueta seleccionada
+                // La función cargarYVisualizarEtiqueta se encargará de actualizar la UI
+                // y mostrar el campo de nombre con el valor correcto
+                cargarYVisualizarEtiqueta(etiquetaId);
+              } else {
+                // Limpiar la vista si no hay etiqueta seleccionada
+                actualizarUIEtiquetaCargada(false);
+                etiquetaActualId = null;
+                document.getElementById("zpl_editor").value = "";
+
+                // Ya no necesitamos esto porque eliminamos el contenedor
+                // document.getElementById("nombre_nueva_etiqueta").value = "";
+
+                etiquetaActualId = null;
+                document.getElementById("config_info_existente").innerHTML =
+                  "Seleccione una etiqueta para previsualizar";
+                document.getElementById("target_etiqueta_existente").innerHTML =
+                  '<div class="alert alert-info mb-3" id="config_info_existente">Seleccione una etiqueta para previsualizar</div>';
+              }
+            });
+            console.log("✅ Listener agregado para etiqueta_id");
+          } else {
+            console.warn("⚠️ No se pudo agregar listener para etiqueta_id");
+          }
+
+          // Agregar listeners para actualización en tiempo real en modo etiquetas existentes
+          const zplEditor = document.getElementById("zpl_editor");
+          if (zplEditor) {
+            zplEditor.addEventListener(
+              "input",
+              actualizarPrevisualizacionExistente
+            );
+            console.log("✅ Listener agregado para zpl_editor");
+          }
+
+          // Agregar listeners a selectores de configuración existente
+          const elementosExistentes = [
+            "impresora_id_existente",
+            "insumo_id_existente",
+            "rotacion_id_existente",
+            "nombre_etiqueta_actual", // Agregamos el campo del nombre
+          ];
+
+          elementosExistentes.forEach((id) => {
+            const el = document.getElementById(id);
+            if (el) {
+              // Usar el evento "input" para el campo de nombre y "change" para los demás
+              const evento =
+                id === "nombre_etiqueta_actual" ? "input" : "change";
+              el.addEventListener(evento, () => {
+                console.log(`🔄 Cambio en ${id}, generando etiqueta`);
+
+                // Si es el campo de nombre, actualizar también la información mostrada
+                if (id === "nombre_etiqueta_actual") {
+                  actualizarInfoEtiqueta();
+                }
+
+                generarEtiqueta(true);
+              });
+              console.log(
+                `✅ Listener agregado para ${id} con evento ${evento}`
+              );
+            } else {
+              console.warn(`⚠️ No se pudo agregar listener para ${id}`);
+            }
+          });
+
+          // Cargar la previsualización inicial para el modo manual inmediatamente
+          console.log("Cargando previsualización inicial para modo manual");
+          // Usamos setTimeout para asegurarnos de que todo esté cargado completamente
+          setTimeout(function () {
+            actualizarPrevisualizacionManual();
+          }, 100);
+        } else {
+          console.error(
+            "❌ No se pudieron configurar todos los eventos debido a errores en el entorno"
+          );
+        }
+
+        // Inicializar el tema
+        initTheme();
       });
+
+      // Función para cambiar entre tema claro y oscuro
+      function toggleTheme() {
+        const html = document.documentElement;
+        const themeIcon = document.getElementById("theme-icon");
+
+        if (html.getAttribute("data-bs-theme") === "dark") {
+          html.setAttribute("data-bs-theme", "light");
+          themeIcon.classList.remove("bi-moon-fill");
+          themeIcon.classList.add("bi-sun-fill");
+          localStorage.setItem("theme", "light");
+        } else {
+          html.setAttribute("data-bs-theme", "dark");
+          themeIcon.classList.remove("bi-sun-fill");
+          themeIcon.classList.add("bi-moon-fill");
+          localStorage.setItem("theme", "dark");
+        }
+      }
+
+      // Función para inicializar el tema según el localStorage
+      function initTheme() {
+        const savedTheme = localStorage.getItem("theme");
+        const themeIcon = document.getElementById("theme-icon");
+
+        if (savedTheme === "dark") {
+          document.documentElement.setAttribute("data-bs-theme", "dark");
+          themeIcon.classList.remove("bi-sun-fill");
+          themeIcon.classList.add("bi-moon-fill");
+        } else {
+          document.documentElement.setAttribute("data-bs-theme", "light");
+          themeIcon.classList.remove("bi-moon-fill");
+          themeIcon.classList.add("bi-sun-fill");
+        }
+
+        // Agregar evento click al botón de cambio de tema
+        document
+          .getElementById("theme-toggle")
+          .addEventListener("click", toggleTheme);
+      }
+
+      // Función para obtener el token CSRF
+      function getCsrfToken() {
+        const csrfTokenElement = document.querySelector(
+          "[name=csrfmiddlewaretoken]"
+        );
+        if (!csrfTokenElement) {
+          console.error("Token CSRF no encontrado en el DOM");
+          return "";
+        }
+        return csrfTokenElement.value;
+      }
+
+      // Función para actualizar la previsualización en tiempo real en modo edición manual
+      function actualizarPrevisualizacionManual() {
+        console.log("Iniciando actualización de previsualización manual");
+        try {
+          // Limpiar el timeout anterior para evitar múltiples solicitudes
+          if (timeoutManual) clearTimeout(timeoutManual);
+
+          // Establecer un nuevo timeout para debounce (300ms)
+          timeoutManual = setTimeout(function () {
+            console.log("Ejecutando actualización de previsualización manual");
+
+            // Obtener los valores actuales
+            const impresoraEl = document.getElementById("impresora_id");
+            const insumoEl = document.getElementById("insumo_id");
+            const rotacionEl = document.getElementById("rotacion_id");
+            const zplEl = document.getElementById("etiqueta");
+            const nombreEtiquetaEl = document.getElementById("nombre_etiqueta");
+            const tipoEtiquetaEl = document.getElementById(
+              "tipo_etiqueta_manual"
+            );
+            const configInfoEl = document.getElementById("config_info_manual");
+            const targetEl = document.getElementById("target_etiqueta");
+
+            // Verificar que los elementos existan
+            if (
+              !impresoraEl ||
+              !insumoEl ||
+              !rotacionEl ||
+              !zplEl ||
+              !tipoEtiquetaEl ||
+              !configInfoEl ||
+              !targetEl
+            ) {
+              console.error(
+                "Faltan elementos necesarios para la previsualización",
+                {
+                  impresora: !!impresoraEl,
+                  insumo: !!insumoEl,
+                  rotacion: !!rotacionEl,
+                  zpl: !!zplEl,
+                  tipo: !!tipoEtiquetaEl,
+                  configInfo: !!configInfoEl,
+                  target: !!targetEl,
+                }
+              );
+              return;
+            }
+
+            const impresoraId = impresoraEl.value;
+            const insumoId = insumoEl.value;
+            const rotacionId = rotacionEl.value;
+            const zpl = zplEl.value;
+            const nombreEtiqueta = nombreEtiquetaEl
+              ? nombreEtiquetaEl.value
+              : "";
+            const tipoEtiqueta = tipoEtiquetaEl.value;
+
+            // Verificar que tengamos todos los datos necesarios, pero permitir continuar con valores por defecto
+            let faltanDatos = false;
+            let mensajeError = "";
+
+            if (!zpl || zpl.trim() === "") {
+              console.warn("ZPL vacío en actualizarPrevisualizacionManual");
+              configInfoEl.innerHTML =
+                "Ingrese código ZPL para previsualizar la etiqueta";
+              return;
+            }
+
+            // Verificamos cada elemento requerido
+            if (!impresoraId) {
+              faltanDatos = true;
+              mensajeError += "Debe seleccionar una impresora. ";
+            }
+
+            if (!insumoId) {
+              faltanDatos = true;
+              mensajeError += "Debe seleccionar un insumo. ";
+            }
+
+            if (!rotacionId) {
+              faltanDatos = true;
+              mensajeError += "Debe seleccionar una rotación. ";
+            }
+
+            // Si los datos están incompletos pero tenemos ZPL, continuamos con la previsualización
+            // pero mostramos una advertencia
+            if (faltanDatos) {
+              console.warn(
+                "Datos incompletos para la previsualización:",
+                mensajeError
+              );
+              configInfoEl.innerHTML = `<div class="alert alert-warning">${mensajeError} Se usarán valores predeterminados.</div>`;
+            }
+
+            // Actualizar la información de configuración
+            actualizarInfoConfigManual();
+
+            // Mostrar spinner de carga mientras se genera la previsualización
+            const spinnerHTML = `
+              <div id="spinner-manual" class="text-center my-3">
+                <div class="spinner-border text-primary" role="status">
+                  <span class="visually-hidden">Generando previsualización...</span>
+                </div>
+                <div class="mt-2">Generando previsualización...</div>
+              </div>
+            `;
+            targetEl.innerHTML = configInfoEl.outerHTML + spinnerHTML;
+
+            console.log("Generando previsualización para:", {
+              nombre: nombreEtiqueta || "Sin nombre",
+              tipo: tipoEtiqueta,
+              impresora: impresoraId,
+              insumo: insumoId,
+              rotacion: rotacionId,
+            });
+
+            // Crear FormData y enviar la solicitud
+            const formData = new FormData();
+            const csrfToken = getCsrfToken();
+
+            if (!csrfToken) {
+              console.error("No se pudo obtener el token CSRF");
+              configInfoEl.innerHTML = `<div class="alert alert-danger">Error: No se pudo obtener el token CSRF</div>`;
+              return;
+            }
+
+            formData.append("impresora_id", impresoraId);
+            formData.append("insumo_id", insumoId);
+            formData.append("rotacion_id", rotacionId);
+            formData.append("tipo_etiqueta", tipoEtiqueta);
+            formData.append("zpl", zpl);
+            formData.append("csrfmiddlewaretoken", csrfToken);
+            formData.append("preview", "true");
+
+            // Enviar la solicitud para visualizar la etiqueta
+            fetch("{% url 'visualizar_etiqueta' %}", {
+              method: "POST",
+              body: formData,
+              headers: {
+                "X-Requested-With": "XMLHttpRequest", // Indicar que es una solicitud AJAX
+              },
+            })
+              .then((response) => {
+                if (!response.ok) {
+                  throw new Error(
+                    `Error HTTP: ${response.status} - ${response.statusText}`
+                  );
+                }
+                return response.text();
+              })
+              .then((html) => {
+                // Conservar el div de configuración y agregar la imagen
+                const configInfo = configInfoEl.outerHTML;
+                targetEl.innerHTML = configInfo + html;
+                console.log(
+                  "Previsualización manual actualizada correctamente"
+                );
+              })
+              .catch((error) => {
+                console.error(
+                  "Error en actualizarPrevisualizacionManual:",
+                  error
+                );
+                configInfoEl.innerHTML = `<div class="alert alert-danger">Error al generar la previsualización: ${error.message}</div>`;
+              });
+          }, 300); // 300ms de debounce
+        } catch (err) {
+          console.error(
+            "Error general en actualizarPrevisualizacionManual:",
+            err
+          );
+          const configInfoEl = document.getElementById("config_info_manual");
+          if (configInfoEl) {
+            configInfoEl.innerHTML = `<div class="alert alert-danger">Error inesperado: ${err.message}</div>`;
+          }
+        }
+      }
+
+      // Función para actualizar la información de configuración en modo manual
+      function actualizarInfoConfigManual() {
+        const impresoraEl = document.getElementById("impresora_id");
+        const insumoEl = document.getElementById("insumo_id");
+        const rotacionEl = document.getElementById("rotacion_id");
+        const tipoEl = document.getElementById("tipo_etiqueta_manual");
+        const nombreEl = document.getElementById("nombre_etiqueta");
+
+        const impresoraText =
+          impresoraEl.options[impresoraEl.selectedIndex].text;
+        const insumoText = insumoEl.options[insumoEl.selectedIndex].text;
+        const rotacionText = rotacionEl.options[rotacionEl.selectedIndex].text;
+        const tipoText = tipoEl.options[tipoEl.selectedIndex].text;
+        const nombreText = nombreEl.value || "Sin nombre";
+
+        configActualManual = {
+          impresora: impresoraEl.value,
+          insumo: insumoEl.value,
+          rotacion: rotacionEl.value,
+          tipo: tipoEl.value,
+        };
+
+        document.getElementById("config_info_manual").innerHTML =
+          `<strong>Nombre:</strong> ${nombreText} | <strong>Tipo:</strong> ${tipoText}<br>` +
+          `<strong>Impresora:</strong> ${impresoraText} | <strong>Tamaño:</strong> ${insumoText} | <strong>Rotación:</strong> ${rotacionText}`;
+      }
+
+      // Función para actualizar la previsualización en tiempo real en modo etiquetas existentes
+      function actualizarPrevisualizacionExistente() {
+        try {
+          // Limpiar el timeout anterior para evitar múltiples solicitudes
+          if (timeoutExistente) clearTimeout(timeoutExistente);
+
+          // Establecer un nuevo timeout para debounce (300ms)
+          timeoutExistente = setTimeout(function () {
+            if (!etiquetaActualId) {
+              console.warn("No hay etiqueta seleccionada");
+              document.getElementById("config_info_existente").innerHTML =
+                "Seleccione una etiqueta para previsualizar";
+              return;
+            }
+
+            const zplEditor = document.getElementById("zpl_editor");
+            if (!zplEditor) {
+              console.error("Editor ZPL no encontrado");
+              return;
+            }
+
+            const zpl = zplEditor.value;
+            if (!zpl || zpl.trim() === "") {
+              console.warn("ZPL vacío, no se actualiza la previsualización");
+              return;
+            }
+
+            console.log(
+              "Actualizando previsualización existente para etiqueta ID:",
+              etiquetaActualId
+            );
+
+            // Actualizar la información de configuración
+            generarEtiqueta(true);
+          }, 300); // 300ms de debounce
+        } catch (err) {
+          console.error(
+            "Error general en actualizarPrevisualizacionExistente:",
+            err
+          );
+          document.getElementById(
+            "config_info_existente"
+          ).innerHTML = `<div class="alert alert-danger">Error al actualizar previsualización: ${err.message}</div>`;
+        }
+      }
+
+      // Función para actualizar la información de configuración en modo etiquetas existentes
+      function actualizarInfoConfigExistente(etiquetaData) {
+        try {
+          console.log(
+            "Actualizando información de configuración con datos:",
+            etiquetaData
+          );
+
+          const configInfoEl = document.getElementById("config_info_existente");
+          if (!configInfoEl) {
+            console.error("Elemento config_info_existente no encontrado");
+            return;
+          }
+
+          // Obtener selectores de configuración
+          const impresoraEl = document.getElementById("impresora_id_existente");
+          const insumoEl = document.getElementById("insumo_id_existente");
+          const rotacionEl = document.getElementById("rotacion_id_existente");
+
+          // Verificar si tenemos datos completos proporcionados
+          if (
+            etiquetaData &&
+            etiquetaData.impresora &&
+            etiquetaData.insumo &&
+            etiquetaData.rotacion
+          ) {
+            // Datos completos proporcionados
+            try {
+              // Obtener el nombre y tipo de la etiqueta seleccionada
+              const etiquetaSelect = document.getElementById("etiqueta_id");
+              if (!etiquetaSelect) {
+                console.error("Elemento etiqueta_id no encontrado");
+                configInfoEl.innerHTML =
+                  "Error: Selector de etiquetas no encontrado";
+                return;
+              }
+
+              if (etiquetaSelect.selectedIndex <= 0) {
+                console.warn("No hay etiqueta seleccionada");
+                configInfoEl.innerHTML =
+                  "Seleccione una etiqueta para ver la configuración";
+                return;
+              }
+
+              const etiquetaOption =
+                etiquetaSelect.options[etiquetaSelect.selectedIndex];
+              if (!etiquetaOption) {
+                console.warn("Opción de etiqueta no encontrada");
+                configInfoEl.innerHTML =
+                  "Error al obtener datos de la etiqueta seleccionada";
+                return;
+              }
+
+              const nombreEtiqueta = etiquetaOption.textContent
+                .split("(")[0]
+                .trim();
+              const tipoEtiqueta =
+                etiquetaOption.getAttribute("data-tipo") || "No especificado";
+
+              configInfoEl.innerHTML =
+                `<strong>Nombre:</strong> ${nombreEtiqueta} | <strong>Tipo:</strong> ${tipoEtiqueta}<br>` +
+                `<strong>Impresora:</strong> ${etiquetaData.impresora} | <strong>Tamaño:</strong> ${etiquetaData.insumo} | <strong>Rotación:</strong> ${etiquetaData.rotacion}`;
+
+              console.log(
+                "Configuración actualizada con datos proporcionados:",
+                {
+                  nombre: nombreEtiqueta,
+                  tipo: tipoEtiqueta,
+                  impresora: etiquetaData.impresora,
+                  insumo: etiquetaData.insumo,
+                  rotacion: etiquetaData.rotacion,
+                }
+              );
+            } catch (innerErr) {
+              console.error("Error al procesar datos de etiqueta:", innerErr);
+              configInfoEl.innerHTML = `<div class="alert alert-warning">Error al procesar información de la etiqueta: ${innerErr.message}</div>`;
+            }
+          } else {
+            console.warn(
+              "Datos de etiqueta incompletos, intentando construir con selectores"
+            );
+
+            // Intentar construir datos a partir de los selectores actuales
+            if (
+              impresoraEl &&
+              insumoEl &&
+              rotacionEl &&
+              impresoraEl.selectedIndex >= 0 &&
+              insumoEl.selectedIndex >= 0 &&
+              rotacionEl.selectedIndex >= 0
+            ) {
+              try {
+                // Obtener datos de los selectores actuales
+                const impresoraText =
+                  impresoraEl.options[impresoraEl.selectedIndex].text;
+                const insumoText =
+                  insumoEl.options[insumoEl.selectedIndex].text;
+                const rotacionText =
+                  rotacionEl.options[rotacionEl.selectedIndex].text;
+
+                // Intentar obtener información básica de la etiqueta seleccionada
+                const etiquetaSelect = document.getElementById("etiqueta_id");
+                if (etiquetaSelect && etiquetaSelect.selectedIndex > 0) {
+                  const etiquetaOption =
+                    etiquetaSelect.options[etiquetaSelect.selectedIndex];
+                  const nombreEtiqueta = etiquetaOption.textContent
+                    .split("(")[0]
+                    .trim();
+                  const tipoEtiqueta =
+                    etiquetaOption.getAttribute("data-tipo") ||
+                    "No especificado";
+
+                  // Actualizar la configuración visual
+                  configInfoEl.innerHTML =
+                    `<strong>Nombre:</strong> ${nombreEtiqueta} | <strong>Tipo:</strong> ${tipoEtiqueta}<br>` +
+                    `<strong>Impresora:</strong> ${impresoraText} | <strong>Tamaño:</strong> ${insumoText} | <strong>Rotación:</strong> ${rotacionText}`;
+
+                  console.log("Configuración actualizada desde selectores:", {
+                    nombre: nombreEtiqueta,
+                    tipo: tipoEtiqueta,
+                    impresora: impresoraText,
+                    insumo: insumoText,
+                    rotacion: rotacionText,
+                  });
+                } else {
+                  configInfoEl.innerHTML =
+                    `<strong>Impresora:</strong> ${impresoraText} | <strong>Tamaño:</strong> ${insumoText} | <strong>Rotación:</strong> ${rotacionText}<br>` +
+                    `<div class="alert alert-warning">Información de etiqueta no disponible</div>`;
+                }
+              } catch (selectErr) {
+                console.error(
+                  "Error al obtener datos de los selectores:",
+                  selectErr
+                );
+                configInfoEl.innerHTML = `<div class="alert alert-warning">Error al procesar selectores: ${selectErr.message}</div>`;
+              }
+            } else {
+              console.warn("No se pudieron obtener valores de los selectores");
+              configInfoEl.innerHTML = `<div class="alert alert-warning">Información de configuración no disponible</div>`;
+            }
+          }
+        } catch (err) {
+          console.error("Error en actualizarInfoConfigExistente:", err);
+          const configInfoEl = document.getElementById("config_info_existente");
+          if (configInfoEl) {
+            configInfoEl.innerHTML = `<div class="alert alert-danger">Error al procesar la configuración: ${err.message}</div>`;
+          }
+        }
+      }
+
+      // Función para cargar y visualizar automáticamente una etiqueta existente
+      function cargarYVisualizarEtiqueta(etiquetaId) {
+        try {
+          if (!etiquetaId) {
+            console.log("No se proporcionó ID de etiqueta");
+            return;
+          }
+
+          console.log("Cargando y visualizando etiqueta con ID:", etiquetaId);
+
+          // Mostrar y cargar el nombre de la etiqueta seleccionada
+          const etiquetaOption = document.querySelector(
+            `#etiqueta_id option[value="${etiquetaId}"]`
+          );
+          if (etiquetaOption) {
+            // Asegurar que el UI se actualice para mostrar los campos necesarios
+            actualizarUIEtiquetaCargada(true);
+
+            // Cargar el nombre en el campo
+            const nombreEtiquetaInput = document.getElementById(
+              "nombre_etiqueta_actual"
+            );
+            if (nombreEtiquetaInput) {
+              nombreEtiquetaInput.value = etiquetaOption.textContent.trim();
+              console.log(
+                "Nombre de etiqueta cargado:",
+                etiquetaOption.textContent.trim()
+              );
+            } else {
+              console.error("No se encontró el campo de nombre de etiqueta");
+            }
+          }
+
+          // Guardar el ID de la etiqueta seleccionada
+          etiquetaActualId = etiquetaId;
+
+          // Construir la URL con URL reversa
+          let baseUrl = "{% url 'get_zpl' 0 %}";
+          // Verificamos diferentes patrones posibles para reemplazar el ID
+          let url;
+          if (baseUrl.includes("/0/")) {
+            // Patrón: /etiquetas/get_zpl/0/
+            url = baseUrl.replace("/0/", `/${etiquetaId}/`);
+          } else if (baseUrl.includes("=0")) {
+            // Patrón: /etiquetas/get_zpl?id=0
+            url = baseUrl.replace("=0", `=${etiquetaId}`);
+          } else {
+            // Construir la URL manualmente como último recurso
+            url = `/etiquetas/get_zpl/${etiquetaId}/`;
+          }
+          console.log("URL construida:", url);
+
+          // Mostrar spinner mientras se carga la etiqueta
+          const spinnerHTML = `
+            <div id="spinner-carga-zpl" class="text-center my-3">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando datos de etiqueta...</span>
+              </div>
+              <div class="mt-2">Cargando datos de etiqueta...</div>
+            </div>
+          `;
+          // Ya se debería haber mostrado un spinner en la parte anterior del código
+
+          // Configuración de la solicitud
+          const csrfToken = getCsrfToken();
+          const requestOptions = {
+            method: "GET",
+            headers: {
+              Accept: "application/json",
+              "X-Requested-With": "XMLHttpRequest",
+              "X-CSRFToken": csrfToken, // Añadimos el token CSRF por si acaso
+            },
+            cache: "no-store", // Evitar caché
+          };
+
+          // Solicitar el contenido ZPL y su configuración
+          fetch(url, requestOptions)
+            .then((response) => {
+              console.log(
+                "Respuesta recibida:",
+                response.status,
+                response.statusText
+              );
+              if (!response.ok) {
+                // Intentar leer cualquier mensaje de error que el servidor haya devuelto
+                return response
+                  .json()
+                  .then((data) => {
+                    throw new Error(
+                      data.error ||
+                        `Error HTTP: ${response.status} - ${response.statusText}`
+                    );
+                  })
+                  .catch((err) => {
+                    // Si no se puede parsear como JSON, lanzar el error HTTP original
+                    if (err.name === "SyntaxError") {
+                      throw new Error(
+                        `Error HTTP: ${response.status} - ${response.statusText}`
+                      );
+                    }
+                    throw err; // Re-lanzar el error si ya es un error de nuestro código
+                  });
+              }
+              return response.json().catch((err) => {
+                console.error("Error al parsear JSON:", err);
+                throw new Error("El servidor no devolvió un JSON válido");
+              });
+            })
+            .then((data) => {
+              console.log("ZPL cargado correctamente:", data);
+
+              if (!data || (typeof data.zpl === "undefined" && !data.error)) {
+                throw new Error(
+                  "La respuesta no contiene datos ZPL ni un mensaje de error"
+                );
+              }
+
+              if (data.error) {
+                throw new Error(`Error del servidor: ${data.error}`);
+              }
+
+              // Mostrar el editor ZPL y el botón de guardar
+              document.getElementById("zplEditorContainer").style.display =
+                "block";
+              document.getElementById("btnGuardarZPL").style.display =
+                "inline-block";
+              document.getElementById(
+                "configExistenteContainer"
+              ).style.display = "flex";
+
+              // Cargar el ZPL en el editor
+              const zplEditor = document.getElementById("zpl_editor");
+              if (!zplEditor) {
+                throw new Error("No se encontró el elemento zpl_editor");
+              }
+              zplEditor.value = data.zpl || "";
+
+              if (!data.zpl || data.zpl.trim() === "") {
+                console.warn("El ZPL recibido está vacío");
+                document.getElementById(
+                  "config_info_existente"
+                ).innerHTML = `<div class="alert alert-warning">La etiqueta no contiene código ZPL</div>`;
+                return;
+              }
+
+              // Actualizar la información de configuración
+              if (data.config) {
+                console.log("Config recibida:", data.config);
+
+                // Verificar que todos los selectores existen
+                const impresoraEl = document.getElementById(
+                  "impresora_id_existente"
+                );
+                const insumoEl = document.getElementById("insumo_id_existente");
+                const rotacionEl = document.getElementById(
+                  "rotacion_id_existente"
+                );
+
+                if (!impresoraEl || !insumoEl || !rotacionEl) {
+                  console.error(
+                    "No se encontraron todos los selectores de configuración"
+                  );
+                  throw new Error(
+                    "No se encontraron los selectores de configuración necesarios"
+                  );
+                }
+
+                // Establecer los valores de los selectores
+                impresoraEl.value = data.config.impresora_id;
+                insumoEl.value = data.config.insumo_id;
+                rotacionEl.value = data.config.rotacion_id;
+
+                actualizarInfoConfigExistente(data.config);
+                configActualExistente = {
+                  impresora: data.config.impresora_id,
+                  insumo: data.config.insumo_id,
+                  rotacion: data.config.rotacion_id,
+                };
+
+                // Generar previsualización inmediatamente
+                generarPreviewInmediato(data.zpl, data.config);
+              } else {
+                console.warn(
+                  "No se recibieron datos de configuración completos"
+                );
+                document.getElementById(
+                  "config_info_existente"
+                ).innerHTML += `<div class="alert alert-warning">No se recibió la configuración completa de la etiqueta</div>`;
+              }
+            })
+            .catch((error) => {
+              console.error("Error al cargar ZPL:", error);
+              document.getElementById("zplEditorContainer").style.display =
+                "none";
+              document.getElementById("btnGuardarZPL").style.display = "none";
+              document.getElementById(
+                "configExistenteContainer"
+              ).style.display = "none";
+              document.getElementById(
+                "config_info_existente"
+              ).innerHTML = `<div class="alert alert-danger">Error al cargar el ZPL: ${error.message}</div>`;
+            });
+        } catch (err) {
+          console.error("Error en cargarYVisualizarEtiqueta:", err);
+          document.getElementById(
+            "config_info_existente"
+          ).innerHTML = `<div class="alert alert-danger">Error general: ${err.message}</div>`;
+        }
+      }
+
+      // Función para generar una vista previa inmediata de la etiqueta
+      function generarPreviewInmediato(zpl, config) {
+        try {
+          if (!zpl || !config) {
+            console.error("Faltan datos para generar la previsualización");
+            return;
+          }
+
+          console.log("Generando previsualización inmediata");
+
+          const csrfToken = getCsrfToken();
+          if (!csrfToken) {
+            console.error("No se pudo obtener el token CSRF");
+            return;
+          }
+
+          // Crear un formulario temporal para enviar los datos
+          const formData = new FormData();
+          formData.append("etiqueta_id", etiquetaActualId);
+          formData.append("csrfmiddlewaretoken", csrfToken);
+          formData.append("zpl_custom", zpl);
+          formData.append("impresora_id", config.impresora_id);
+          formData.append("insumo_id", config.insumo_id);
+          formData.append("rotacion_id", config.rotacion_id);
+
+          // URL para la solicitud
+          const url = "{% url 'etiqueta_png' %}";
+
+          // Mostrar spinner de carga mientras se genera la etiqueta
+          const spinnerHTML = `
+            <div id="spinner-preview-inmediato" class="text-center my-3">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Generando previsualización...</span>
+              </div>
+              <div class="mt-2">Generando previsualización...</div>
+            </div>
+          `;
+          document.getElementById("target_etiqueta_existente").innerHTML =
+            document.getElementById("config_info_existente").outerHTML +
+            spinnerHTML;
+
+          // Enviar la solicitud para generar la etiqueta
+          fetch(url, {
+            method: "POST",
+            body: formData,
+            headers: {
+              "X-Requested-With": "XMLHttpRequest",
+            },
+          })
+            .then((response) => {
+              if (!response.ok) {
+                throw new Error(
+                  `Error HTTP: ${response.status} - ${response.statusText}`
+                );
+              }
+              return response.text();
+            })
+            .then((html) => {
+              // Conservar el div de configuración y agregar la imagen
+              const configInfo = document.getElementById(
+                "config_info_existente"
+              ).outerHTML;
+              document.getElementById("target_etiqueta_existente").innerHTML =
+                configInfo + html;
+              console.log("Previsualización inmediata completada");
+            })
+            .catch((error) => {
+              console.error("Error en previsualización inmediata:", error);
+              document.getElementById(
+                "config_info_existente"
+              ).innerHTML = `<div class="alert alert-danger">Error al generar la previsualización: ${error.message}</div>`;
+            });
+        } catch (err) {
+          console.error("Error general en generarPreviewInmediato:", err);
+        }
+      }
+
+      // Función para crear una nueva etiqueta a partir de una etiqueta existente
+
+      // Función auxiliar para obtener el token CSRF
+      function getCsrfToken() {
+        return document.querySelector("[name=csrfmiddlewaretoken]").value;
+      }
+
+      // Función para actualizar la información de la etiqueta cuando se cambia el nombre
+      function actualizarInfoEtiqueta() {
+        try {
+          // Verificar si hay una etiqueta seleccionada
+          if (!etiquetaActualId) {
+            console.warn("No hay etiqueta seleccionada para actualizar info");
+            return;
+          }
+
+          // Obtener el elemento de información de configuración
+          const configInfoEl = document.getElementById("config_info_existente");
+          if (!configInfoEl) {
+            console.error("Elemento config_info_existente no encontrado");
+            return;
+          }
+
+          // Obtener el nombre actualizado
+          const nombreEtiquetaInput = document.getElementById(
+            "nombre_etiqueta_actual"
+          );
+          if (!nombreEtiquetaInput) {
+            console.error("No se encontró el campo de nombre de etiqueta");
+            return;
+          }
+
+          // Obtener la información actual mostrada
+          const infoActual = configInfoEl.innerHTML;
+
+          // Actualizar solo la parte del nombre en la información mostrada
+          if (infoActual.includes("<strong>Nombre:</strong>")) {
+            const nombreActual =
+              nombreEtiquetaInput.value.trim() || "Sin nombre";
+
+            // Reemplazar el nombre en la información mostrada usando expresiones regulares
+            const nuevoInfo = infoActual.replace(
+              /<strong>Nombre:<\/strong>[^|]+/,
+              `<strong>Nombre:</strong> ${nombreActual} `
+            );
+
+            configInfoEl.innerHTML = nuevoInfo;
+            console.log(
+              "Información de etiqueta actualizada con el nuevo nombre:",
+              nombreActual
+            );
+          }
+        } catch (err) {
+          console.error("Error al actualizar información de etiqueta:", err);
+        }
+      }
+
+      // Función original guardarZPL
     </script>
   </body>
 </html>

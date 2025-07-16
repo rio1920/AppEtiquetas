@@ -119,36 +119,66 @@ class Labelary:
         tamanio = insumo.tamanio
         
         url = f"{self.base_url}{dpi_str}/labels/{tamanio}/0/"
-        
-        # Si se está usando una base_url personalizada de la impresora
-        if impresora.base_url:
-            url = f"{impresora.base_url}{dpi_str}/labels/{tamanio}/0/"
-            
+               
         return url
     
     def renderizar_etiqueta(self, etiqueta):
         """Renderiza una etiqueta basada en su tipo y configuración"""
-        url = self.generar_url_etiqueta(etiqueta)
-        zpl = etiqueta.contenido_zpl
-        angulo = etiqueta.rotacion.angulo
-        
-        # Tipo de etiqueta determina cómo procesarla
-        if etiqueta.tipo_etiqueta == 'interno':
-            return self.renderizar_png(url, zpl, angulo)
-        else:  # 'externo'
-            return self.renderizar_png(url, zpl, angulo)
+        try:
+            url = self.generar_url_etiqueta(etiqueta)
+            zpl = etiqueta.contenido_zpl
+            if not zpl or not zpl.strip():
+                return None
+                
+            angulo = etiqueta.rotacion.angulo
+            
+
+            
+            # Tipo de etiqueta determina cómo procesarla
+            if etiqueta.tipo_etiqueta == 'interno':
+                return self.renderizar_png(url, zpl, angulo)
+            else:  # 'externo'
+                return self.renderizar_png(url, zpl, angulo)
+        except Exception:
+            # Log eliminado para producción
+            return None
     
     def renderizar_png(self, url, zpl, angulo):
         """Renderiza un PNG con la configuración específica"""
         headers = {
             'X-Rotation': str(angulo),
-            'X-Quality': 'grayscale'
+            'X-Quality': 'grayscale',
+            'Content-Type': 'application/x-www-form-urlencoded'
         }
         
-        response = self.api.post(url, data=zpl, headers=headers)
-        if response.status_code != 200:
-            raise ValueError(f"Error en la respuesta: {response.status_code} con payload: {zpl}")
-        return self.convertir_a_base64(response.content)
+        # Máximo de reintento
+        max_intentos = 3
+        intentos = 0
+        
+        while intentos < max_intentos:
+            try:
+
+                response = self.api.post(
+                    url, 
+                    data=zpl, 
+                    headers=headers,
+                    timeout=10.0  # Tiempo de espera razonable
+                )
+                
+                if response.status_code == 200:
+
+                    return self.convertir_a_base64(response.content)
+                else:
+
+                    raise ValueError(f"Error en la respuesta: {response.status_code}")
+                    
+            except Exception:
+
+                intentos += 1
+                if intentos >= max_intentos:
+                    raise
+        
+        return None
     
     # Mantener métodos anteriores por compatibilidad
     def pngPrimaria(self, zpl: str, url=None) -> str:

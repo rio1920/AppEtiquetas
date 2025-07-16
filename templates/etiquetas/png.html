@@ -1,3 +1,18 @@
-{% if imagen %}
-<img class="img-fluid" src="{{ imagen }}" alt="Etiqueta generada" />
+{% if error %}
+<div class="alert alert-danger">{{ error }}</div>
+{% elif imagen %}
+<div class="card">
+  <div class="card-body p-2">
+    <img
+      class="img-fluid"
+      src="{{ imagen }}"
+      alt="Etiqueta generada"
+      style="background-color: white"
+    />
+  </div>
+</div>
+{% else %}
+<div class="alert alert-warning">
+  No se pudo generar la vista previa. Verifica el código ZPL y los parámetros.
+</div>
 {% endif %}

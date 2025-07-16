@@ -1,1 +1,6 @@
 .env
+docker-compose.yml
+.gitignore
+*.pyc
+__pycache__/
+dockerfile
