@@ -105,6 +105,78 @@
       style="z-index: 1100; margin-top: 20px; width: 350px"
       id="toastContainer"
     ></div>
+
+    <!-- Modal para duplicar etiqueta -->
+    <div
+      class="modal fade"
+      id="modalDuplicarEtiqueta"
+      tabindex="-1"
+      aria-labelledby="modalDuplicarEtiquetaLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalDuplicarEtiquetaLabel">
+              Duplicar etiqueta
+            </h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label for="etiqueta_original_nombre" class="form-label"
+                >Etiqueta original:</label
+              >
+              <input
+                type="text"
+                class="form-control"
+                id="etiqueta_original_nombre"
+                disabled
+              />
+            </div>
+            <div class="mb-3">
+              <label for="etiqueta_duplicada_nombre" class="form-label"
+                >Nombre de la nueva etiqueta:</label
+              >
+              <input
+                type="text"
+                class="form-control"
+                id="etiqueta_duplicada_nombre"
+                required
+              />
+              <div class="invalid-feedback">El nombre no puede estar vacío</div>
+            </div>
+            <div class="alert alert-info">
+              <small
+                >Se duplicará la etiqueta con todos sus datos actuales, pero con
+                el nuevo nombre ingresado.</small
+              >
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              class="btn btn-primary"
+              id="btnConfirmarDuplicar"
+            >
+              Duplicar etiqueta
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
     <div class="container px-4">
       <h1 class="my-4 text-center text-lg-start">
         Sistema de Generación de Etiquetas
@@ -453,13 +525,22 @@
 
                 <div class="d-grid gap-2 d-md-flex justify-content-md-start">
                   <button
-                    class="btn btn-success"
+                    class="btn btn-success me-2"
                     type="button"
                     id="btnGuardarZPL"
                     onclick="guardarZPL()"
                     style="display: none"
                   >
                     <i class="bi bi-save"></i> Guardar cambios
+                  </button>
+                  <button
+                    class="btn btn-info"
+                    type="button"
+                    id="btnDuplicarEtiqueta"
+                    onclick="duplicarEtiqueta()"
+                    style="display: none"
+                  >
+                    <i class="bi bi-copy"></i> Duplicar etiqueta
                   </button>
                 </div>
               </form>
@@ -495,6 +576,7 @@
           const elementosUI = [
             "zplEditorContainer",
             "btnGuardarZPL",
+            "btnDuplicarEtiqueta", // Incluir botón de duplicar
             "configExistenteContainer",
             "nombreActualContainer", // Incluir el contenedor del nombre
           ];
@@ -1119,6 +1201,148 @@
               );
             }
           });
+      }
+
+      // Función para duplicar la etiqueta actual
+      function duplicarEtiqueta() {
+        if (!etiquetaActualId) {
+          mostrarToast(
+            "Por favor, seleccione una etiqueta primero",
+            "warning",
+            4000
+          );
+          return;
+        }
+
+        // Obtener el nombre actual para sugerir uno nuevo
+        const nombreActual = document
+          .getElementById("nombre_etiqueta_actual")
+          .value.trim();
+
+        // Configurar el modal con los datos actuales
+        const etiquetaOriginalInput = document.getElementById(
+          "etiqueta_original_nombre"
+        );
+        const etiquetaDuplicadaInput = document.getElementById(
+          "etiqueta_duplicada_nombre"
+        );
+
+        // Mostrar el nombre actual en el campo de etiqueta original
+        if (etiquetaOriginalInput) {
+          etiquetaOriginalInput.value = nombreActual;
+        }
+
+        // Sugerir un nombre para la nueva etiqueta
+        if (etiquetaDuplicadaInput) {
+          etiquetaDuplicadaInput.value = nombreActual + " - Copia";
+          // Quitar cualquier estado inválido previo
+          etiquetaDuplicadaInput.classList.remove("is-invalid");
+        }
+
+        // Mostrar el modal
+        const modalDuplicar = new bootstrap.Modal(
+          document.getElementById("modalDuplicarEtiqueta")
+        );
+        modalDuplicar.show();
+
+        // Enfoque en el campo de nombre nuevo
+        etiquetaDuplicadaInput.focus();
+        etiquetaDuplicadaInput.select();
+
+        // Configurar el botón de confirmación
+        const btnConfirmar = document.getElementById("btnConfirmarDuplicar");
+
+        // Limpiar los eventos previos del botón para evitar duplicaciones
+        btnConfirmar.replaceWith(btnConfirmar.cloneNode(true));
+
+        // Obtener la referencia al nuevo botón (después del cloneNode)
+        const btnConfirmarNuevo = document.getElementById(
+          "btnConfirmarDuplicar"
+        );
+
+        // Agregar un único listener al botón
+        btnConfirmarNuevo.addEventListener("click", function () {
+          // Obtener el nuevo nombre desde el input del modal
+          const nuevoNombre = etiquetaDuplicadaInput.value.trim();
+
+          // Validar que el nombre no esté vacío
+          if (!nuevoNombre || nuevoNombre === "") {
+            etiquetaDuplicadaInput.classList.add("is-invalid");
+            return;
+          }
+
+          // Deshabilitar el botón para evitar doble clic
+          btnConfirmarNuevo.disabled = true;
+
+          // Cerrar el modal
+          modalDuplicar.hide();
+
+          // Mostrar un toast de "Duplicando..."
+          mostrarToast("Duplicando etiqueta...", "info", 2000);
+
+          // Crear un formulario temporal para enviar los datos
+          const formData = new FormData();
+          formData.append("etiqueta_id", etiquetaActualId);
+          formData.append("nuevo_nombre", nuevoNombre);
+          formData.append(
+            "csrfmiddlewaretoken",
+            document.querySelector("[name=csrfmiddlewaretoken]").value
+          );
+
+          // Enviar la solicitud para duplicar la etiqueta
+          fetch("{% url 'duplicar_etiqueta' %}", {
+            method: "POST",
+            body: formData,
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.success) {
+                mostrarToast(
+                  `Etiqueta duplicada correctamente como "${nuevoNombre}"`,
+                  "success",
+                  4000
+                );
+
+                // Recargar la página para ver la nueva etiqueta
+                setTimeout(() => {
+                  location.reload();
+                }, 1500);
+              } else {
+                // Habilitar el botón nuevamente en caso de error
+                btnConfirmarNuevo.disabled = false;
+
+                // Verificar si es error de nombre duplicado
+                if (data.error && data.error.includes("Ya existe")) {
+                  mostrarToast(
+                    "Ya existe una etiqueta con ese nombre",
+                    "error",
+                    4000
+                  );
+                } else {
+                  mostrarToast(
+                    "Error al duplicar la etiqueta: " + data.error,
+                    "error",
+                    4000
+                  );
+                }
+              }
+            })
+            .catch((error) => {
+              console.error("Error:", error);
+              mostrarToast("Error al duplicar la etiqueta", "error", 4000);
+              // Habilitar el botón nuevamente en caso de error
+              btnConfirmarNuevo.disabled = false;
+            });
+        });
+
+        // También permitir envío con Enter en el campo de texto
+        etiquetaDuplicadaInput.onkeydown = function (e) {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            // Usar la referencia al nuevo botón
+            btnConfirmarNuevo.click();
+          }
+        };
       }
 
       // Función para visualizar la etiqueta con los valores seleccionados
@@ -2648,6 +2872,49 @@
 
         if (nombreExistente) {
           agregarLimpiezaValidacion(nombreExistente);
+        }
+
+        // Configurar el campo de nombre duplicado para limpiar validación
+        const nombreDuplicado = document.getElementById(
+          "etiqueta_duplicada_nombre"
+        );
+        if (nombreDuplicado) {
+          agregarLimpiezaValidacion(nombreDuplicado);
+        }
+
+        // Configurar el modal de duplicar etiqueta
+        const modalDuplicar = document.getElementById("modalDuplicarEtiqueta");
+        if (modalDuplicar) {
+          // Limpiar y reiniciar el modal cada vez que se oculta
+          modalDuplicar.addEventListener("hidden.bs.modal", function () {
+            // Limpiar cualquier estado de error
+            const nombreDuplicado = document.getElementById(
+              "etiqueta_duplicada_nombre"
+            );
+            if (nombreDuplicado) {
+              nombreDuplicado.classList.remove("is-invalid");
+            }
+
+            // Habilitar el botón de confirmar (en caso de que estuviera deshabilitado)
+            const btnConfirmar = document.getElementById(
+              "btnConfirmarDuplicar"
+            );
+            if (btnConfirmar) {
+              btnConfirmar.disabled = false;
+            }
+          });
+
+          // Configurar el foco al mostrar el modal
+          modalDuplicar.addEventListener("shown.bs.modal", function () {
+            // Cuando se muestra el modal, dar foco al campo de nombre
+            const nombreDuplicado = document.getElementById(
+              "etiqueta_duplicada_nombre"
+            );
+            if (nombreDuplicado) {
+              nombreDuplicado.focus();
+              nombreDuplicado.select();
+            }
+          });
         }
       });
     </script>
