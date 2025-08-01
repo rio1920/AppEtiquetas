@@ -1,6 +1,6 @@
 from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse
-from .utils import Labelary, Patrones
+from .utils import Labelary, Patrones, formatear_fecha
 from .models import Etiqueta, Variable
 from .models import Impresora, Insumo, Rotacion, Idioma
 import re
@@ -89,6 +89,37 @@ def procesar_variables_con_idioma(zpl, idioma_default='ES'):
         if var_limpia in variables_procesadas and variables_procesadas[var_limpia]:
             patron_completo = f"[@{match}[@IDIOMAVARIABLE@]@]"
             zpl = zpl.replace(patron_completo, variables_procesadas[var_limpia])
+    
+    # Procesar variables de fecha con formato específico
+    # Patrón: [@Variable;FFdd/MM/yyyy@] o cualquier otro formato soportado
+    patron_fecha = re.compile(r'\[@([^@\[\];]+);([FfDdMmYyHhSs/.-:]+)@]')
+    for match in patron_fecha.findall(zpl):
+        var_nombre = match[0].strip()
+        formato_fecha = match[1].strip()
+        var_limpia = Patrones.limpiar_variable(var_nombre)
+        
+        # Si encontramos el valor para la variable, intentar formatearlo como fecha
+        if var_limpia in variables_procesadas and variables_procesadas[var_limpia]:
+            valor = variables_procesadas[var_limpia]
+            # Intentar formatear como fecha con detección automática de formato
+            valor_formateado = formatear_fecha(valor, formato_fecha)
+            # Reemplazar en el ZPL
+            patron_completo = f"[@{var_nombre};{formato_fecha}@]"
+            zpl = zpl.replace(patron_completo, valor_formateado)
+            print(f"Variable de fecha '{var_limpia}' formateada según '{formato_fecha}'")
+        else:
+            # Si la variable no existe en la base de datos, podría ser una fecha literal
+            # Intentar interpretar el nombre de la variable como una fecha literal
+            try:
+                valor_formateado = formatear_fecha(var_nombre, formato_fecha)
+                patron_completo = f"[@{var_nombre};{formato_fecha}@]"
+                zpl = zpl.replace(patron_completo, valor_formateado)
+                print(f"Fecha literal '{var_nombre}' formateada según '{formato_fecha}' -> '{valor_formateado}'")
+            except Exception as e:
+                print(f"No se pudo interpretar '{var_nombre}' como fecha: {e}")
+                
+    # Procesar fechas literales fuera de variables (formato directo en el texto)
+    zpl = Patrones.detectar_y_formatear_fechas_literales(zpl)
     
     # Luego procesar el resto de las variables
     extrer_variables_idem_texto = Patrones.extraer_variables_de_texto(zpl)

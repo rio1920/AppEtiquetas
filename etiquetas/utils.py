@@ -214,6 +214,207 @@ class Labelary:
         return f"data:image/png;base64,{imagen_base64}"
     
     
+def formatear_fecha(fecha_str, formato_zpl, formato_entrada=None):
+    """
+    Formatea una fecha según el formato especificado en el ZPL.
+    
+    Args:
+        fecha_str: String con la fecha en cualquier formato reconocible o un objeto datetime
+        formato_zpl: String con el formato de fecha del ZPL (e.j., "FFdd/MM/yyyy")
+        formato_entrada: Formato de entrada opcional si se conoce específicamente
+        
+    Returns:
+        String con la fecha formateada según el formato especificado
+    """
+    from datetime import datetime
+    import re
+    import platform
+    
+    # Para debugging
+    es_windows = platform.system() == 'Windows'
+    print(f"Sistema operativo: {platform.system()}, es Windows: {es_windows}")
+    print(f"Formato ZPL solicitado: {formato_zpl}")
+    
+    # Si el valor es None o vacío, devolver string vacío
+    if not fecha_str:
+        return ""
+        
+    # Si ya es un objeto datetime, usarlo directamente
+    if isinstance(fecha_str, datetime):
+        fecha = fecha_str
+    # Si es un string, intentar convertirlo
+    elif isinstance(fecha_str, str):
+        fecha_str = fecha_str.strip()
+        fecha = None
+        
+        # 1. Si se proporciona un formato de entrada, intentar usarlo primero
+        if formato_entrada:
+            try:
+                # Convertir formato especificado a formato Python
+                formato_python = formato_entrada
+                formato_python = formato_python.replace('dd', '%d')
+                formato_python = formato_python.replace('MM', '%m')
+                formato_python = formato_python.replace('yyyy', '%Y')
+                formato_python = formato_python.replace('yy', '%y')
+                fecha = datetime.strptime(fecha_str, formato_python)
+                print(f"Fecha parseada con formato especificado: {fecha}")
+            except ValueError:
+                print(f"No se pudo parsear la fecha '{fecha_str}' con formato '{formato_entrada}'")
+        
+        # 2. Si no hay formato de entrada o falló, intentar formatos comunes
+        if not fecha:
+            formatos_comunes = [
+                # ISO format (yyyy-mm-dd)
+                '%Y-%m-%d', '%Y-%m-%dT%H:%M:%S', '%Y-%m-%dT%H:%M:%SZ', 
+                # Formatos con guiones
+                '%d-%m-%Y', '%m-%d-%Y', '%Y-%d-%m',
+                # Formatos con barras
+                '%d/%m/%Y', '%m/%d/%Y', '%Y/%m/%d', '%Y/%d/%m',
+                # Formatos con puntos
+                '%d.%m.%Y', '%m.%d.%Y', '%Y.%m.%d', '%Y.%d.%m',
+                # Formatos de año corto
+                '%d-%m-%y', '%m-%d-%y', '%y-%m-%d', '%y-%d-%m',
+                '%d/%m/%y', '%m/%d/%y', '%y/%m/%d', '%y/%d/%m',
+                '%d.%m.%y', '%m.%d.%y', '%y.%m.%d', '%y.%d.%m',
+            ]
+            
+            for fmt in formatos_comunes:
+                try:
+                    fecha = datetime.strptime(fecha_str, fmt)
+                    print(f"Fecha '{fecha_str}' parseada con formato: {fmt}")
+                    break
+                except ValueError:
+                    continue
+                    
+        # 3. Intentar con ISO format usando fromisoformat (más flexible)
+        if not fecha:
+            try:
+                # Algunas fechas ISO pueden tener 'Z' o '+00:00' al final
+                fecha_limpia = fecha_str.replace('Z', '+00:00')
+                fecha = datetime.fromisoformat(fecha_limpia)
+                print(f"Fecha parseada con fromisoformat: {fecha}")
+            except ValueError:
+                pass
+                
+        # 4. Intentar extraer componentes de fecha usando regex
+        if not fecha:
+            # Buscar patrones de fecha comunes (dd/mm/yyyy, yyyy-mm-dd, etc.)
+            # Patrón para detectar fechas con separadores
+            patron_fecha = re.compile(r'(\d{1,4})[-./](\d{1,2})[-./](\d{1,4})')
+            match = patron_fecha.search(fecha_str)
+            
+            if match:
+                # Extraer componentes
+                comp1, comp2, comp3 = match.groups()
+                
+                # Determinar qué componente es qué (año, mes, día)
+                if len(comp1) == 4:  # Si el primer componente tiene 4 dígitos, es probable que sea el año
+                    year, month, day = comp1, comp2, comp3
+                elif len(comp3) == 4:  # Si el último componente tiene 4 dígitos, es probable que sea el año
+                    day, month, year = comp1, comp2, comp3
+                else:  # En caso de duda, asumir formato dd/mm/yy o mm/dd/yy (dependiendo del valor del mes)
+                    # Determinar mes vs día
+                    if 1 <= int(comp1) <= 12 and int(comp2) > 12:  # Probable mm/dd/yy
+                        month, day, year = comp1, comp2, comp3
+                    else:  # Probable dd/mm/yy
+                        day, month, year = comp1, comp2, comp3
+                        
+                # Convertir a enteros
+                try:
+                    year, month, day = int(year), int(month), int(day)
+                    
+                    # Ajustar año de 2 dígitos
+                    if year < 100:
+                        year = 2000 + year if year < 50 else 1900 + year
+                        
+                    # Verificar rangos válidos
+                    if 1 <= day <= 31 and 1 <= month <= 12 and 1000 <= year <= 9999:
+                        try:
+                            fecha = datetime(year, month, day)
+                            print(f"Fecha parseada con regex: {fecha}")
+                        except ValueError as e:
+                            print(f"Error al crear fecha: {e}")
+                except ValueError as e:
+                    print(f"Error al convertir componentes de fecha: {e}")
+        
+        # Si no pudimos convertir, devolver el string original
+        if not fecha:
+            print(f"No se pudo parsear la fecha: '{fecha_str}'")
+            return fecha_str
+    else:
+        # Si no es string ni datetime, devolver el valor convertido a string
+        print(f"Tipo de fecha no soportado: {type(fecha_str)}")
+        return str(fecha_str)
+    
+    # Procesar el formato de salida (ZPL)
+    # FF - Puede estar como prefijo o en medio del formato (por ejemplo, FFdd o yyyy/MM/FFdd)
+    formato_zpl = formato_zpl.strip()
+    
+    # Verificar si hay "FF" en cualquier parte del formato y quitarlo
+    formato_zpl = formato_zpl.replace('FF', '')
+    formato_zpl = formato_zpl.replace('ff', '')
+    
+    try:
+        # Para Windows, necesitamos un enfoque diferente ya que %-d no funciona
+        # En lugar de usar strftime, formateamos manualmente
+        
+        # Obtener los componentes de la fecha
+        dia = fecha.day
+        mes = fecha.month
+        anio = fecha.year
+        hora = fecha.hour
+        minuto = fecha.minute
+        segundo = fecha.second
+        
+        print(f"Fecha analizada: día={dia}, mes={mes}, año={anio}")
+        
+        # Verificar si el formato es solo "dd" después de quitar FF - caso especial
+        print(f"Verificando formato especial: '{formato_zpl.upper()}'")
+        if formato_zpl.upper().replace(' ', '') == 'DD' or formato_zpl.lower().replace(' ', '') == 'dd':
+            # Si solo se pide el día, devolver solo el día sin importar el formato de entrada
+            print(f"Formato especial solo día detectado: {formato_zpl}")
+            return f"{dia:02d}"
+            
+        # Crear el formato de salida según el patrón ZPL
+        formato_limpio = formato_zpl
+            
+        # Reemplazar directamente los componentes en el formato
+        resultado = formato_limpio
+        
+        # Reemplazar patrones de año
+        if 'yyyy' in resultado:
+            resultado = resultado.replace('yyyy', f"{anio:04d}")
+        elif 'yy' in resultado:
+            resultado = resultado.replace('yy', f"{anio % 100:02d}")
+            
+        # Reemplazar patrones de mes
+        if 'MM' in resultado:
+            resultado = resultado.replace('MM', f"{mes:02d}")
+        elif 'M' in resultado:
+            resultado = resultado.replace('M', f"{mes}")
+            
+        # Reemplazar patrones de día
+        if 'dd' in resultado:
+            resultado = resultado.replace('dd', f"{dia:02d}")
+        elif 'd' in resultado:
+            resultado = resultado.replace('d', f"{dia}")
+            
+        # Reemplazar otros componentes si son necesarios
+        if 'HH' in resultado:
+            resultado = resultado.replace('HH', f"{hora:02d}")
+        if 'mm' in resultado:
+            resultado = resultado.replace('mm', f"{minuto:02d}")
+        if 'ss' in resultado:
+            resultado = resultado.replace('ss', f"{segundo:02d}")
+        
+        # Ya no necesitamos usar strftime, hemos reemplazado directamente todos los componentes
+            
+        print(f"Fecha formateada: '{fecha_str}' -> '{resultado}' (formato: {formato_zpl})")
+        return resultado
+    except Exception as e:
+        print(f"Error al formatear fecha: {e}")
+        return fecha_str
+
 class Patrones:
     """Clase para manejar patrones de ZPL y extraer variables"""
 
@@ -248,6 +449,14 @@ class Patrones:
         """Extrae variables de un string ZPL usando expresiones regulares"""
         variables = []
         idiomas = []
+
+        # Patrón para variables de fecha: [@Variable;FFdd/MM/yyyy@] y otros formatos
+        patron_fecha = re.compile(r'\[@([^@\[\];]+);([FfDdMmYyHhSs/.-:]+)@]')
+        for variable, formato in patron_fecha.findall(zpl):
+            var_limpia = Patrones.limpiar_variable(variable)
+            if var_limpia and var_limpia not in variables:
+                variables.append(var_limpia)
+            # No necesitamos hacer nada con el formato aquí, solo extraer la variable
 
         # Patrón especificado: [@Variable[@IDIOMAVARIABLE@]@]
         # Primero extraemos este patrón específico
@@ -319,6 +528,10 @@ class Patrones:
         """Devuelve las variables completas tal como aparecen en el texto ZPL."""
         variables = set()
 
+        # Variables de fecha, ej: [@Variable;FFdd/MM/yyyy@] y otros formatos
+        patron_fecha = re.compile(r'\[@[^@\[\];]+;[FfDdMmYyHhSs/.-:]+@]')
+        variables.update(patron_fecha.findall(texto))
+
         # Variables con idioma [@Variable@Idioma@]
         patron_con_idioma = re.compile(r'\[@[^@]+@[^@]+@]')
         variables.update(patron_con_idioma.findall(texto))
@@ -335,6 +548,27 @@ class Patrones:
                 variables.add(match)
 
         return list(variables)
+    
+    @staticmethod
+    def extraer_formato_fecha(variable_completa: str) -> tuple:
+        """
+        Extrae el nombre de la variable y el formato de fecha si existe
+        
+        Args:
+            variable_completa: La variable completa del ZPL
+            
+        Returns:
+            tuple: (nombre_variable, formato_fecha) o (None, None) si no se encuentra
+        """
+        # Para formato de fecha [@Variable;FFdd/MM/yyyy@]
+        patron_fecha = re.compile(r'\[@\s*([^@\[\];]+);([FfDdMmYyHhSs/.-:]+)@]')
+        match = patron_fecha.search(variable_completa)
+        if match:
+            var = match.group(1).strip()
+            formato = match.group(2).strip()
+            return Patrones.limpiar_variable(var), formato
+        
+        return None, None
     
     @staticmethod
     def extraer_var_limpia(variable_completa: str) -> str | None:
@@ -370,3 +604,44 @@ class Patrones:
         if match:
             return match.group(1).strip()
         return None
+        
+    @staticmethod
+    def detectar_y_formatear_fechas_literales(zpl: str) -> str:
+        """
+        Detecta fechas literales en el texto ZPL y las formatea según patrones de formato
+        especificados (si existen)
+        
+        Args:
+            zpl: String con el texto ZPL
+            
+        Returns:
+            String con el texto ZPL con las fechas literales formateadas
+        """
+        import re
+        
+        # Patrón para detectar fechas literales seguidas de formato, por ejemplo: 2025-12-31;FFdd/MM/yyyy
+        # Este patrón busca una fecha (con varios formatos posibles) seguida de un punto y coma
+        # y un formato de fecha (que empieza con FF o no)
+        patron_fecha_con_formato = re.compile(
+            r'(\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{4}|\d{2}/\d{2}/\d{4}|\d{4}/\d{2}/\d{2}|\d{2}\.\d{2}\.\d{4}|\d{4}\.\d{2}\.\d{2});([FfDdMmYyHhSs/.-:]+)'
+        )
+        
+        # Reemplazar todas las ocurrencias encontradas
+        for match in patron_fecha_con_formato.finditer(zpl):
+            fecha_literal = match.group(1)
+            formato = match.group(2)
+            
+            # Intentar formatear la fecha
+            try:
+                fecha_formateada = formatear_fecha(fecha_literal, formato)
+                # Reemplazar en el ZPL
+                zpl = zpl.replace(f"{fecha_literal};{formato}", fecha_formateada)
+                print(f"Fecha literal '{fecha_literal}' formateada según '{formato}' -> '{fecha_formateada}'")
+            except Exception as e:
+                print(f"Error al formatear fecha literal: {e}")
+        
+        # También buscar fechas literales sin formato específico
+        # En este caso podríamos dejarlas como están o aplicar un formato predeterminado
+        # Por ahora las dejamos como están
+        
+        return zpl
