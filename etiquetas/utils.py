@@ -457,6 +457,13 @@ class Patrones:
             if var_limpia and var_limpia not in variables:
                 variables.append(var_limpia)
             # No necesitamos hacer nada con el formato aquí, solo extraer la variable
+                
+        # Patrón para variables con asignación de valor: [@IDIOMAVARIABLE=valor@]
+        patron_idioma_valor = re.compile(r'\[@IDIOMAVARIABLE=([^@\[\]]+)@]')
+        for valor in patron_idioma_valor.findall(zpl):
+            # Agregar IDIOMAVARIABLE a la lista de variables encontradas
+            if 'IDIOMAVARIABLE' not in variables:
+                variables.append('IDIOMAVARIABLE')
 
         # Patrón especificado: [@Variable[@IDIOMAVARIABLE@]@]
         # Primero extraemos este patrón específico

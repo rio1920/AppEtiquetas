@@ -46,6 +46,38 @@ def procesar_variables_con_idioma(zpl, idioma_default='ES'):
     # Extraer variables con su idioma específico
     variables_con_idioma = Patrones.extraer_variables_con_idioma(zpl)
     
+    # Buscar primero si existe una variable IDIOMAVARIABLE en el ZPL
+    # Esta variable tendrá prioridad sobre el idioma_default pasado como parámetro
+    idioma_from_zpl = None
+    
+    # Primero, verificar si hay un valor literal para IDIOMAVARIABLE en el formato [@IDIOMAVARIABLE=EN@]
+    patron_idioma_valor = re.compile(r'\[@IDIOMAVARIABLE=(.*?)@]')
+    matches = patron_idioma_valor.findall(zpl)
+    if matches:
+        idioma_from_zpl = matches[0].strip()
+        print(f"Usando idioma literal desde ZPL: {idioma_from_zpl}")
+        idioma_default = idioma_from_zpl.upper()
+        
+        # Reemplazar el patrón [@IDIOMAVARIABLE=valor@] por una cadena vacía
+        zpl = re.sub(r'\[@IDIOMAVARIABLE=.*?@]', '', zpl)
+    
+    # Si no hay un valor literal, buscar si existe [@IDIOMAVARIABLE@] y obtener su valor de la BD
+    elif 'IDIOMAVARIABLE' in variables_encontradas:
+        patron_idioma_variable = re.compile(r'\[@IDIOMAVARIABLE@]')
+        matches = patron_idioma_variable.findall(zpl)
+        if matches:
+            # El patrón [@IDIOMAVARIABLE@] está presente, necesitamos obtener su valor de la base de datos
+            try:
+                variable_obj = Variable.objects.get(codigo='IDIOMAVARIABLE')
+                idioma_from_zpl = variable_obj.default
+                print(f"Usando idioma desde variable en BD: {idioma_from_zpl}")
+                if idioma_from_zpl:
+                    idioma_default = idioma_from_zpl.upper()  # Actualizar el idioma por defecto
+                    # Reemplazar [@IDIOMAVARIABLE@] con una cadena vacía después de procesarlo
+                    zpl = zpl.replace('[@IDIOMAVARIABLE@]', '')
+            except Variable.DoesNotExist:
+                print("Variable IDIOMAVARIABLE no encontrada en la base de datos")
+    
     # Para cada variable, buscar su valor según el idioma correspondiente
     variables_procesadas = {}
     variables_no_encontradas = {}
@@ -89,6 +121,117 @@ def procesar_variables_con_idioma(zpl, idioma_default='ES'):
         if var_limpia in variables_procesadas and variables_procesadas[var_limpia]:
             patron_completo = f"[@{match}[@IDIOMAVARIABLE@]@]"
             zpl = zpl.replace(patron_completo, variables_procesadas[var_limpia])
+    
+    # Procesar variables con formato especial [@Variable;;FI IDIOMA@]
+    # Este patrón detecta algo como [@producto;;FI ITA@] donde "producto" es la variable e "ITA" es el idioma
+    patron_idioma_fi = re.compile(r'\[@([^@\[\];]+);;FI\s+([^@\[\];]+)@]')
+    for match in patron_idioma_fi.findall(zpl):
+        var_nombre = match[0].strip()  # Nombre de la variable (ej: producto)
+        idioma_var = match[1].strip().upper()  # Código del idioma (ej: ITA, EN, ES)
+        var_limpia = Patrones.limpiar_variable(var_nombre)
+        
+        print(f"Procesando variable con idioma específico: {var_limpia} en {idioma_var}")
+        
+        try:
+            # Buscar la variable con el idioma específico
+            variable_obj = Variable.objects.get(codigo=var_limpia, idioma=idioma_var)
+            valor = variable_obj.default
+            # Reemplazar en el ZPL
+            patron_completo = f"[@{var_nombre};;FI {match[1].strip()}@]"
+            zpl = zpl.replace(patron_completo, valor)
+            print(f"Variable '{var_limpia}' en idioma '{idioma_var}' reemplazada por '{valor}'")
+        except Variable.DoesNotExist:
+            try:
+                # Si no existe con ese idioma, intentar con el idioma por defecto
+                variable_obj = Variable.objects.get(codigo=var_limpia, idioma=idioma_default)
+                valor = variable_obj.default
+                # Reemplazar en el ZPL
+                patron_completo = f"[@{var_nombre};;FI {match[1].strip()}@]"
+                zpl = zpl.replace(patron_completo, valor)
+                print(f"Variable '{var_limpia}' no encontrada en idioma '{idioma_var}', usando idioma por defecto: '{valor}'")
+            except Variable.DoesNotExist:
+                print(f"Variable '{var_limpia}' no encontrada en ningún idioma")
+                # Si no se encuentra, mantener el texto original sin el formato
+                patron_completo = f"[@{var_nombre};;FI {match[1].strip()}@]"
+                zpl = zpl.replace(patron_completo, var_limpia)
+    
+    # Procesar variables con formato [@Variable;FIIDIOMAVARIABLE@]
+    # Donde Variable puede ser algo como Definiciones.sDescripcion, y IDIOMAVARIABLE representa un código de idioma (ES, EN, ITA)
+    patron_idioma_fivar = re.compile(r'\[@([^@\[\];]+);FIIDIOMAVARIABLE@]')
+    for match in patron_idioma_fivar.findall(zpl):
+        var_nombre = match.strip()  # Nombre completo de la variable (ej: Definiciones.sDescripcion)
+        var_limpia = Patrones.limpiar_variable(var_nombre)
+        
+        # Obtener el idioma que está definido como IDIOMAVARIABLE
+        idioma_var = idioma_default  # Por defecto, usamos el idioma global
+        
+        try:
+            # Intentar buscar primero si existe la variable IDIOMAVARIABLE en la base de datos
+            variable_idioma_obj = Variable.objects.get(codigo='IDIOMAVARIABLE')
+            if variable_idioma_obj.default:
+                idioma_var = variable_idioma_obj.default.upper()
+                print(f"Usando idioma de la variable IDIOMAVARIABLE: {idioma_var}")
+        except Variable.DoesNotExist:
+            # Si no existe, usar el idioma por defecto
+            print(f"Variable IDIOMAVARIABLE no encontrada, usando idioma por defecto: {idioma_var}")
+        
+        print(f"Procesando variable con idioma de IDIOMAVARIABLE: {var_limpia} en {idioma_var}")
+        
+        try:
+            # Buscar la variable con el idioma especificado
+            # La variable puede ser un nombre compuesto como Definiciones.sDescripcion
+            variable_obj = Variable.objects.get(codigo=var_limpia, idioma=idioma_var)
+            valor = variable_obj.default
+            # Reemplazar en el ZPL
+            patron_completo = f"[@{var_nombre};FIIDIOMAVARIABLE@]"
+            zpl = zpl.replace(patron_completo, valor)
+            print(f"Variable '{var_limpia}' en idioma '{idioma_var}' reemplazada por '{valor}'")
+        except Variable.DoesNotExist:
+            try:
+                # Si no existe con ese idioma, intentar con el idioma por defecto ES
+                variable_obj = Variable.objects.get(codigo=var_limpia, idioma='ES')
+                valor = variable_obj.default
+                # Reemplazar en el ZPL
+                patron_completo = f"[@{var_nombre};FIIDIOMAVARIABLE@]"
+                zpl = zpl.replace(patron_completo, valor)
+                print(f"Variable '{var_limpia}' no encontrada en idioma '{idioma_var}', usando idioma por defecto ES: '{valor}'")
+            except Variable.DoesNotExist:
+                print(f"Variable '{var_limpia}' no encontrada en ningún idioma")
+                # Si no se encuentra, mantener el texto original sin el formato
+                patron_completo = f"[@{var_nombre};FIIDIOMAVARIABLE@]"
+                zpl = zpl.replace(patron_completo, var_limpia)
+    
+    # Procesar variables con idioma directo [@Variable;IDIOMA@] donde IDIOMA es un código como EN, ES, ITA, etc.
+    patron_idioma_directo = re.compile(r'\[@([^@\[\];]+);([A-Za-z]{2,3})@]')
+    for match in patron_idioma_directo.findall(zpl):
+        var_nombre = match[0].strip()  # Nombre de la variable (ej: DefinicionesCuartos.sDescripcion)
+        idioma_var = match[1].strip().upper()  # Código del idioma (ej: EN, ES, ITA)
+        var_limpia = Patrones.limpiar_variable(var_nombre)
+        
+        print(f"Procesando variable con idioma directo: {var_limpia} en {idioma_var}")
+        
+        try:
+            # Buscar la variable con el idioma específico
+            variable_obj = Variable.objects.get(codigo=var_limpia, idioma=idioma_var)
+            valor = variable_obj.default
+            # Reemplazar en el ZPL
+            patron_completo = f"[@{var_nombre};{match[1].strip()}@]"
+            zpl = zpl.replace(patron_completo, valor)
+            print(f"Variable '{var_limpia}' en idioma '{idioma_var}' reemplazada por '{valor}'")
+        except Variable.DoesNotExist:
+            try:
+                # Si no existe con ese idioma, intentar con el idioma por defecto ES
+                variable_obj = Variable.objects.get(codigo=var_limpia, idioma='ES')
+                valor = variable_obj.default
+                # Reemplazar en el ZPL
+                patron_completo = f"[@{var_nombre};{match[1].strip()}@]"
+                zpl = zpl.replace(patron_completo, valor)
+                print(f"Variable '{var_limpia}' no encontrada en idioma '{idioma_var}', usando idioma por defecto ES: '{valor}'")
+            except Variable.DoesNotExist:
+                print(f"Variable '{var_limpia}' no encontrada en ningún idioma")
+                # Si no se encuentra, mantener el texto original sin el formato
+                patron_completo = f"[@{var_nombre};{match[1].strip()}@]"
+                zpl = zpl.replace(patron_completo, var_limpia)
     
     # Procesar variables de fecha con formato específico
     # Patrón: [@Variable;FFdd/MM/yyyy@] o cualquier otro formato soportado
@@ -177,7 +320,15 @@ def etiqueta_png(request):
             # Procesamiento con soporte para variables con idioma
             idioma_default = 'ES'  # Idioma por defecto (en mayúsculas)
             
-            # Si hay un idioma especificado en la solicitud, usarlo
+            # Extraer todas las variables para mantener compatibilidad con el código existente
+            variables_encontradas = Patrones.extraer_variables(zpl)
+            
+            # La lógica para extraer IDIOMAVARIABLE de diferentes formas ahora está en procesar_variables_con_idioma
+            # Aquí sólo necesitamos asignar el idioma seleccionado en la UI si está disponible
+            idioma_default = 'ES'  # Valor predeterminado
+            
+            # Si hay un idioma especificado en la solicitud, usarlo como valor inicial
+            # Este será sobrescrito si hay un valor de idioma en el ZPL
             if 'idioma' in request.POST and request.POST.get('idioma'):
                 idioma_solicitado = request.POST.get('idioma')
                 try:
@@ -187,9 +338,6 @@ def etiqueta_png(request):
                     idioma_default = idioma_solicitado
                 except Exception:
                     pass  # Si el idioma no existe, se mantiene el idioma por defecto
-            
-            # Extraer todas las variables para mantener compatibilidad con el código existente
-            variables_encontradas = Patrones.extraer_variables(zpl)
             
             # Procesar las variables con el idioma correspondiente
             zpl, variables_no_encontradas = procesar_variables_con_idioma(zpl, idioma_default)
@@ -300,7 +448,9 @@ def renderizar_etiqueta(request, etiqueta_id):
             idioma_default = request.GET.get('idioma')
         except Exception:
             pass
-            
+    
+    # El valor de IDIOMAVARIABLE en el ZPL, si existe, tendrá prioridad sobre el idioma_default
+    # Esto se maneja dentro de procesar_variables_con_idioma
     # Procesar las variables con el idioma correspondiente
     zpl, variables_no_encontradas = procesar_variables_con_idioma(zpl, idioma_default)
     
@@ -489,6 +639,8 @@ def visualizar_etiqueta(request):
                 except Exception:
                     pass
             
+            # El valor de IDIOMAVARIABLE en el ZPL, si existe, tendrá prioridad sobre el idioma_default
+            # Esto se maneja dentro de procesar_variables_con_idioma
             # Procesar las variables con el idioma correspondiente
             zpl, variables_no_encontradas = procesar_variables_con_idioma(zpl, idioma_default)
             
