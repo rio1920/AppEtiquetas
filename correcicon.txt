@@ -1,3 +1,6 @@
 primero fijarse la fecha y leuog formatearla segun le zpl
 
 priemro ver el idioma variable que puede llegar esta y luego reemplazar la variable con ese idoma
+
+
+select para idiomavariable cualquiera que reemplace el idioma 

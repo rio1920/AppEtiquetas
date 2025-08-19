@@ -4,7 +4,9 @@ from .utils import Labelary, Patrones, formatear_fecha
 from .models import Etiqueta, Variable
 from .models import Impresora, Insumo, Rotacion, Idioma
 import re
-
+import pdb
+import json
+from datetime import datetime
 
 def verificar_variables_no_definidas(variables_encontradas, variables_definidas, contexto="", info_adicional=""):
     """
@@ -29,6 +31,28 @@ def verificar_variables_no_definidas(variables_encontradas, variables_definidas,
     
     return variables_no_definidas
 
+# def verificar_variable_definiciones(nombre_variable='Definiciones.sDescripcion'):
+#     """
+#     Función de diagnóstico para verificar si la variable específica existe en la base de datos
+#     y qué idiomas tiene disponibles.
+#     """
+#     print(f"===== VERIFICACIÓN DE VARIABLE: {nombre_variable} =====")
+#     try:
+#         # Obtener todos los idiomas disponibles
+#         idiomas = Idioma.objects.all().values_list('codigo', flat=True)
+#         print(f"Idiomas disponibles en la base de datos: {list(idiomas)}")
+        
+#         # Buscar la variable en cada idioma
+#         for idioma in idiomas:
+#             try:
+#                 variable_obj = Variable.objects.get(codigo=nombre_variable, idioma=idioma)
+#                 print(f"✓ Variable '{nombre_variable}' encontrada en idioma '{idioma}': '{variable_obj.default}'")
+#             except Variable.DoesNotExist:
+#                 print(f"✗ Variable '{nombre_variable}' NO existe en idioma '{idioma}'")
+#     except Exception as e:
+#         print(f"Error al verificar variable: {str(e)}")
+#     print("="*60)
+
 def procesar_variables_con_idioma(zpl, idioma_default='ES'):
     """
     Procesa el ZPL para encontrar variables con idioma y reemplazarlas con los valores correspondientes.
@@ -38,13 +62,109 @@ def procesar_variables_con_idioma(zpl, idioma_default='ES'):
         idioma_default: Código del idioma por defecto si no se especifica uno (en mayúsculas)
     
     Returns:
-        ZPL procesado y diccionario de variables no encontradas
+        ZPL procesado, diccionario de variables no encontradas, y lista de variables que usan idioma por defecto
     """
+    print(f"***** PROCESANDO ZPL CON IDIOMA: {idioma_default} *****")
+    
+    # # Verificar si la variable Definiciones.sDescripcion existe en la base de datos (diagnóstico)
+    # verificar_variable_definiciones()
     # Extraer todas las variables del ZPL
     variables_encontradas = Patrones.extraer_variables(zpl)
     
     # Extraer variables con su idioma específico
     variables_con_idioma = Patrones.extraer_variables_con_idioma(zpl)
+    
+    # Lista para almacenar las variables que usan el idioma por defecto 'ES'
+    variables_con_fallback_es = []
+    
+    # Guardar el idioma del template antes de procesar cualquier otra lógica de idioma
+    # Este valor se usará SIEMPRE para los patrones FIIDIOMAVARIABLE
+    idioma_template = idioma_default
+    
+    # PRIORIDAD 1: Procesar cualquier patrón que contenga FIIDIOMAVARIABLE usando el idioma del template
+    # Esto debe hacerse antes de cualquier modificación de idioma_default
+    patron_fiidiomavariable_general = re.compile(r'\[@([^@\[\];]+);\s*FIIDIOMAVARIABLE\s*@]', re.IGNORECASE)
+    matches_fiidioma = patron_fiidiomavariable_general.findall(zpl)
+    
+    if matches_fiidioma:
+        print(f"Encontrados {len(matches_fiidioma)} patrones con FIIDIOMAVARIABLE. Idioma del template: {idioma_template}")
+    
+    for match in matches_fiidioma:
+        var_nombre = match.strip()
+        var_limpia = Patrones.limpiar_variable(var_nombre)
+        
+        # SIEMPRE usamos el idioma seleccionado en el template para FIIDIOMAVARIABLE
+        # Esto tiene prioridad sobre cualquier otra fuente de idioma
+        idioma_var = idioma_template.upper() if idioma_template else 'ES'
+
+        print(f"Procesando variable FIIDIOMAVARIABLE: {var_limpia} en idioma {idioma_var} (seleccionado en template)")
+
+        try:
+            # Buscar en el idioma seleccionado en el template
+            variable_obj = Variable.objects.get(codigo=var_limpia, idioma=idioma_var)
+            valor = variable_obj.default
+            patron_completo = re.compile(rf'\[@{re.escape(var_nombre)};\s*FIIDIOMAVARIABLE\s*@]', re.IGNORECASE)
+            
+            # Log antes del reemplazo
+            fragmento = zpl[max(0, zpl.find(f"[@{var_nombre};FIIDIOMAVARIABLE@]")-20):min(len(zpl), zpl.find(f"[@{var_nombre};FIIDIOMAVARIABLE@]")+40)]
+            print(f"Reemplazando en ZPL: '{fragmento}' - Valor: '{valor}'")
+            
+            zpl = patron_completo.sub(valor, zpl)
+            print(f"Variable '{var_limpia}' en idioma '{idioma_var}' reemplazada por '{valor}'")
+        except Variable.DoesNotExist:
+            try:
+                # Si no existe con ese idioma, intentar con el idioma por defecto ES
+                variable_obj = Variable.objects.get(codigo=var_limpia, idioma='ES')
+                valor = variable_obj.default
+                patron_completo = re.compile(rf'\[@{re.escape(var_nombre)};\s*FIIDIOMAVARIABLE\s*@]', re.IGNORECASE)
+                
+                # Log antes del reemplazo
+                fragmento = zpl[max(0, zpl.find(f"[@{var_nombre};FIIDIOMAVARIABLE@]")-20):min(len(zpl), zpl.find(f"[@{var_nombre};FIIDIOMAVARIABLE@]")+40)]
+                print(f"Reemplazando en ZPL (fallback ES): '{fragmento}' - Valor: '{valor}'")
+                
+                zpl = patron_completo.sub(valor, zpl)
+                print(f"Variable '{var_limpia}' no encontrada en idioma '{idioma_var}', usando idioma por defecto ES: '{valor}'")
+                
+                # Agregar a la lista de variables con fallback a ES cuando el idioma solicitado no es ES
+                if idioma_var != 'ES':
+                    variables_con_fallback_es.append(var_limpia)
+            except Variable.DoesNotExist:
+                print(f"Variable '{var_limpia}' no encontrada en ningún idioma")
+                patron_completo = re.compile(rf'\[@{re.escape(var_nombre)};\s*FIIDIOMAVARIABLE\s*@]', re.IGNORECASE)
+                zpl = patron_completo.sub(var_limpia, zpl)
+    
+    # Para patrones que NO son FIIDIOMAVARIABLE, buscar si existe una variable IDIOMAVARIABLE en el ZPL
+    # que sobrescriba el idioma_default
+    idioma_from_zpl = None
+    
+    # Primero, verificar si hay un valor literal para IDIOMAVARIABLE en el formato [@IDIOMAVARIABLE=EN@]
+    patron_idioma_valor = re.compile(r'\[@IDIOMAVARIABLE=(.*?)@]')
+    matches = patron_idioma_valor.findall(zpl)
+    if matches:
+        idioma_from_zpl = matches[0].strip()
+        print(f"Usando idioma literal desde ZPL: {idioma_from_zpl}")
+        idioma_default = idioma_from_zpl.upper()
+        
+        # Reemplazar el patrón [@IDIOMAVARIABLE=valor@] por una cadena vacía
+        zpl = re.sub(r'\[@IDIOMAVARIABLE=.*?@]', '', zpl)
+    
+    # Si no hay un valor literal, buscar si existe [@IDIOMAVARIABLE@] y obtener su valor de la BD
+    elif 'IDIOMAVARIABLE' in variables_encontradas:
+        patron_idioma_variable = re.compile(r'\[@IDIOMAVARIABLE@]')
+        matches = patron_idioma_variable.findall(zpl)
+        if matches:
+            # El patrón [@IDIOMAVARIABLE@] está presente, necesitamos obtener su valor de la base de datos
+            try:
+                variable_obj = Variable.objects.get(codigo='IDIOMAVARIABLE')
+                idioma_from_zpl = variable_obj.default
+                print(f"Usando idioma desde variable en BD: {idioma_from_zpl}")
+                if idioma_from_zpl:
+                    idioma_default = idioma_from_zpl.upper()  # Actualizar el idioma por defecto
+                    # Reemplazar [@IDIOMAVARIABLE@] con una cadena vacía después de procesarlo
+                    zpl = zpl.replace('[@IDIOMAVARIABLE@]', '')
+                    print(f"NOTA: El patrón FIIDIOMAVARIABLE seguirá usando el idioma del template: {idioma_template}")
+            except Variable.DoesNotExist:
+                print("Variable IDIOMAVARIABLE no encontrada en la base de datos")
     
     # Para cada variable, buscar su valor según el idioma correspondiente
     variables_procesadas = {}
@@ -53,17 +173,27 @@ def procesar_variables_con_idioma(zpl, idioma_default='ES'):
     for var in variables_encontradas:
         # Determinar el idioma para esta variable
         idioma_asignado = variables_con_idioma.get(var, idioma_default)
-        
+
         if idioma_asignado == "MULTI_IDIOMA":
-            # Esta es una variable con el formato [@Variable[@IDIOMAVARIABLE@]@]
-            # Necesitamos buscar su valor en el idioma especificado en la solicitud
+            # Si el usuario seleccionó un idioma en el template, usar ese idioma
+            idioma_seleccionado = idioma_default
             try:
-                variable_obj = Variable.objects.get(codigo=var, idioma=idioma_default)
+                variable_obj = Variable.objects.get(codigo=var, idioma=idioma_seleccionado)
                 variables_procesadas[var] = variable_obj.default
             except Variable.DoesNotExist:
-                variables_no_encontradas[var] = idioma_default
-                variables_procesadas[var] = None
-                print(f"Variable multi-idioma '{var}' no encontrada en idioma '{idioma_default}'")
+                try:
+                    # Si no existe con ese idioma, intentar con el idioma por defecto ES
+                    variable_obj = Variable.objects.get(codigo=var, idioma='ES')
+                    variables_procesadas[var] = variable_obj.default
+                    print(f"Variable multi-idioma '{var}' no encontrada en idioma '{idioma_seleccionado}', usando idioma por defecto ES")
+                    
+                    # Agregar a la lista de variables con fallback a ES cuando el idioma seleccionado no es ES
+                    if idioma_seleccionado != 'ES':
+                        variables_con_fallback_es.append(var)
+                except Variable.DoesNotExist:
+                    variables_no_encontradas[var] = idioma_seleccionado
+                    variables_procesadas[var] = None
+                    print(f"Variable multi-idioma '{var}' no encontrada en ningún idioma")
         else:
             # Procesamiento normal para variables con idioma específico
             try:
@@ -76,10 +206,18 @@ def procesar_variables_con_idioma(zpl, idioma_default='ES'):
                     variable_obj = Variable.objects.get(codigo=var, idioma=idioma_default)
                     variables_procesadas[var] = variable_obj.default
                     print(f"Variable '{var}' no encontrada en idioma '{idioma_asignado}', usando idioma por defecto")
+                    
+                    # Agregar a la lista de variables con fallback a ES cuando el idioma asignado no es ES
+                    if idioma_asignado != 'ES' and idioma_default == 'ES':
+                        variables_con_fallback_es.append(var)
                 except Variable.DoesNotExist:
                     variables_no_encontradas[var] = idioma_asignado
                     variables_procesadas[var] = None
                     print(f"Variable '{var}' no encontrada en ningún idioma")
+    
+    # Log general para saber cómo se está reemplazando
+    print(f"Variables encontradas: {variables_encontradas}")
+    print(f"Variables procesadas: {list(variables_procesadas.keys())}")
     
     # Reemplazar las variables en el ZPL
     # Primero, procesar el patrón especial [@Variable[@IDIOMAVARIABLE@]@]
@@ -89,6 +227,115 @@ def procesar_variables_con_idioma(zpl, idioma_default='ES'):
         if var_limpia in variables_procesadas and variables_procesadas[var_limpia]:
             patron_completo = f"[@{match}[@IDIOMAVARIABLE@]@]"
             zpl = zpl.replace(patron_completo, variables_procesadas[var_limpia])
+    
+    # Procesar variables con formato especial [@Variable;;FI IDIOMA@]
+    # Este patrón detecta algo como [@producto;;FI ITA@] donde "producto" es la variable e "ITA" es el idioma
+    patron_idioma_fi = re.compile(r'\[@([^@\[\];]+);;FI\s+([^@\[\];]+)@]')
+    for match in patron_idioma_fi.findall(zpl):
+        var_nombre = match[0].strip()  # Nombre de la variable (ej: producto)
+        idioma_var = match[1].strip().upper()  # Código del idioma (ej: ITA, EN, ES)
+        var_limpia = Patrones.limpiar_variable(var_nombre)
+        
+        print(f"Procesando variable con idioma específico: {var_limpia} en {idioma_var}")
+        
+        try:
+            # Buscar la variable con el idioma específico
+            variable_obj = Variable.objects.get(codigo=var_limpia, idioma=idioma_var)
+            valor = variable_obj.default
+            # Reemplazar en el ZPL
+            patron_completo = f"[@{var_nombre};;FI {match[1].strip()}@]"
+            zpl = zpl.replace(patron_completo, valor)
+            print(f"Variable '{var_limpia}' en idioma '{idioma_var}' reemplazada por '{valor}'")
+        except Variable.DoesNotExist:
+            try:
+                # Si no existe con ese idioma, intentar con el idioma por defecto
+                variable_obj = Variable.objects.get(codigo=var_limpia, idioma=idioma_default)
+                valor = variable_obj.default
+                # Reemplazar en el ZPL
+                patron_completo = f"[@{var_nombre};;FI {match[1].strip()}@]"
+                zpl = zpl.replace(patron_completo, valor)
+                print(f"Variable '{var_limpia}' no encontrada en idioma '{idioma_var}', usando idioma por defecto: '{valor}'")
+            except Variable.DoesNotExist:
+                print(f"Variable '{var_limpia}' no encontrada en ningún idioma")
+                # Si no se encuentra, mantener el texto original sin el formato
+                patron_completo = f"[@{var_nombre};;FI {match[1].strip()}@]"
+                zpl = zpl.replace(patron_completo, var_limpia)
+        var_nombre = match.strip()
+        var_limpia = Patrones.limpiar_variable(var_nombre)
+        
+        # SIEMPRE usamos el idioma seleccionado en el template para FIIDIOMAVARIABLE
+        # Esto tiene prioridad sobre cualquier otra fuente de idioma
+        idioma_var = idioma_template.upper() if idioma_template else 'ES'
+
+        print(f"Procesando variable FIIDIOMAVARIABLE: {var_limpia} en idioma {idioma_var} (seleccionado en template)")
+
+        try:
+            # Buscar en el idioma seleccionado en el template
+            variable_obj = Variable.objects.get(codigo=var_limpia, idioma=idioma_var)
+            valor = variable_obj.default
+            patron_completo = re.compile(rf'\[@{re.escape(var_nombre)};\s*FIIDIOMAVARIABLE\s*@]', re.IGNORECASE)
+            
+            # Log antes del reemplazo
+            fragmento = zpl[max(0, zpl.find(f"[@{var_nombre};FIIDIOMAVARIABLE@]")-20):min(len(zpl), zpl.find(f"[@{var_nombre};FIIDIOMAVARIABLE@]")+40)]
+            print(f"Reemplazando en ZPL: '{fragmento}' - Valor: '{valor}'")
+            
+            zpl = patron_completo.sub(valor, zpl)
+            print(f"Variable '{var_limpia}' en idioma '{idioma_var}' reemplazada por '{valor}'")
+        except Variable.DoesNotExist:
+            try:
+                # Si no existe con ese idioma, intentar con el idioma por defecto ES
+                variable_obj = Variable.objects.get(codigo=var_limpia, idioma='ES')
+                valor = variable_obj.default
+                patron_completo = re.compile(rf'\[@{re.escape(var_nombre)};\s*FIIDIOMAVARIABLE\s*@]', re.IGNORECASE)
+                
+                # Log antes del reemplazo
+                fragmento = zpl[max(0, zpl.find(f"[@{var_nombre};FIIDIOMAVARIABLE@]")-20):min(len(zpl), zpl.find(f"[@{var_nombre};FIIDIOMAVARIABLE@]")+40)]
+                print(f"Reemplazando en ZPL (fallback ES): '{fragmento}' - Valor: '{valor}'")
+                
+                zpl = patron_completo.sub(valor, zpl)
+                print(f"Variable '{var_limpia}' no encontrada en idioma '{idioma_var}', usando idioma por defecto ES: '{valor}'")
+                
+                # Agregar a la lista de variables con fallback a ES
+                variables_con_fallback_es.append(var_limpia)
+            except Variable.DoesNotExist:
+                print(f"Variable '{var_limpia}' no encontrada en ningún idioma")
+                patron_completo = re.compile(rf'\[@{re.escape(var_nombre)};\s*FIIDIOMAVARIABLE\s*@]', re.IGNORECASE)
+                zpl = patron_completo.sub(var_limpia, zpl)
+    
+    # Procesar variables con idioma directo [@Variable;IDIOMA@] donde IDIOMA es un código como EN, ES, ITA, etc.
+    patron_idioma_directo = re.compile(r'\[@([^@\[\];]+);([A-Za-z]{2,3})@]')
+    for match in patron_idioma_directo.findall(zpl):
+        var_nombre = match[0].strip()  # Nombre de la variable (ej: DefinicionesCuartos.sDescripcion)
+        idioma_var = match[1].strip().upper()  # Código del idioma (ej: EN, ES, ITA)
+        var_limpia = Patrones.limpiar_variable(var_nombre)
+        
+        print(f"Procesando variable con idioma directo: {var_limpia} en {idioma_var}")
+        
+        try:
+            # Buscar la variable con el idioma específico
+            variable_obj = Variable.objects.get(codigo=var_limpia, idioma=idioma_var)
+            valor = variable_obj.default
+            # Reemplazar en el ZPL
+            patron_completo = f"[@{var_nombre};{match[1].strip()}@]"
+            zpl = zpl.replace(patron_completo, valor)
+            print(f"Variable '{var_limpia}' en idioma '{idioma_var}' reemplazada por '{valor}'")
+        except Variable.DoesNotExist:
+            try:
+                # Si no existe con ese idioma, intentar con el idioma por defecto ES
+                variable_obj = Variable.objects.get(codigo=var_limpia, idioma='ES')
+                valor = variable_obj.default
+                # Reemplazar en el ZPL
+                patron_completo = f"[@{var_nombre};{match[1].strip()}@]"
+                zpl = zpl.replace(patron_completo, valor)
+                print(f"Variable '{var_limpia}' no encontrada en idioma '{idioma_var}', usando idioma por defecto ES: '{valor}'")
+                
+                # Agregar a la lista de variables con fallback a ES
+                variables_con_fallback_es.append(var_limpia)
+            except Variable.DoesNotExist:
+                print(f"Variable '{var_limpia}' no encontrada en ningún idioma")
+                # Si no se encuentra, mantener el texto original sin el formato
+                patron_completo = f"[@{var_nombre};{match[1].strip()}@]"
+                zpl = zpl.replace(patron_completo, var_limpia)
     
     # Procesar variables de fecha con formato específico
     # Patrón: [@Variable;FFdd/MM/yyyy@] o cualquier otro formato soportado
@@ -129,7 +376,33 @@ def procesar_variables_con_idioma(zpl, idioma_default='ES'):
         if var_limpia and var_limpia in variables_procesadas and variables_procesadas[var_limpia]:
             zpl = zpl.replace(palabra, variables_procesadas[var_limpia])
     
-    return zpl, variables_no_encontradas
+    # Eliminar duplicados de la lista de variables con fallback a ES
+    if variables_con_fallback_es:
+        variables_con_fallback_es = list(set(variables_con_fallback_es))
+        print(f"Variables que utilizan el idioma por defecto (ES): {variables_con_fallback_es}")
+        print(f"Total de variables con fallback a ES: {len(variables_con_fallback_es)}")
+        print(f"Tipo de datos de variables_con_fallback_es: {type(variables_con_fallback_es)}")
+        
+        # Verificación adicional para cada variable en fallback
+        for var in variables_con_fallback_es:
+            try:
+                # Verificar que existe en español pero no en el idioma solicitado
+                variable_es = Variable.objects.get(codigo=var, idioma='ES')
+                print(f"[visualizar_etiqueta] Variable '{var}' en idioma 'ES' tiene valor: '{variable_es.default}'")
+                
+                try:
+                    Variable.objects.get(codigo=var, idioma=idioma_default)
+                    print(f"[visualizar_etiqueta] Variable '{var}' SÍ existe en idioma '{idioma_default}'")
+                except Variable.DoesNotExist:
+                    print(f"[visualizar_etiqueta] Variable '{var}' NO existe en idioma '{idioma_default}'")
+            except Variable.DoesNotExist:
+                print(f"[visualizar_etiqueta] ATENCIÓN: La variable '{var}' no existe ni siquiera en ES!")
+    else:
+        print("No se encontraron variables con fallback a ES")
+    
+    # Ya no forzamos variables de prueba, dejamos que el sistema funcione normalmente
+    
+    return zpl, variables_no_encontradas, variables_con_fallback_es
 
 def etiqueta_png(request):
     # Obtener todos los idiomas para el selector
@@ -177,7 +450,15 @@ def etiqueta_png(request):
             # Procesamiento con soporte para variables con idioma
             idioma_default = 'ES'  # Idioma por defecto (en mayúsculas)
             
-            # Si hay un idioma especificado en la solicitud, usarlo
+            # Extraer todas las variables para mantener compatibilidad con el código existente
+            variables_encontradas = Patrones.extraer_variables(zpl)
+            
+            # La lógica para extraer IDIOMAVARIABLE de diferentes formas ahora está en procesar_variables_con_idioma
+            # Aquí sólo necesitamos asignar el idioma seleccionado en la UI si está disponible
+            idioma_default = 'ES'  # Valor predeterminado
+            
+            # Si hay un idioma especificado en la solicitud, usarlo como valor inicial
+            # Este será sobrescrito si hay un valor de idioma en el ZPL
             if 'idioma' in request.POST and request.POST.get('idioma'):
                 idioma_solicitado = request.POST.get('idioma')
                 try:
@@ -188,11 +469,12 @@ def etiqueta_png(request):
                 except Exception:
                     pass  # Si el idioma no existe, se mantiene el idioma por defecto
             
-            # Extraer todas las variables para mantener compatibilidad con el código existente
-            variables_encontradas = Patrones.extraer_variables(zpl)
+            # Debug del idioma seleccionado
+            print(f"[etiqueta_png] Idioma seleccionado para procesar ZPL: {idioma_default}")
+            print(f"[etiqueta_png] Ejemplo ZPL recibido (primeros 100 chars): {zpl[:100]}")
             
             # Procesar las variables con el idioma correspondiente
-            zpl, variables_no_encontradas = procesar_variables_con_idioma(zpl, idioma_default)
+            zpl, variables_no_encontradas, variables_con_fallback_es = procesar_variables_con_idioma(zpl, idioma_default)
             
             # Registrar variables no encontradas para seguimiento
             if variables_no_encontradas:
@@ -210,18 +492,33 @@ def etiqueta_png(request):
                 # Modo antiguo - renderizar directamente el ZPL
                 img = Labelary().pngPrimaria(zpl)
                 
+            # Convertir la lista de variables con fallback a JSON
+            variables_fallback_json = json.dumps(variables_con_fallback_es) if variables_con_fallback_es else '[]'
+            
+            # Registrar en el log las variables con fallback para debug
+            print(f"[visualizar_etiqueta] JSON de variables con fallback: {variables_fallback_json}")
+            print(f"[visualizar_etiqueta] Contexto enviado - idioma_actual: {idioma_default}")
+            print(f"[visualizar_etiqueta] Contexto enviado - variables_con_fallback_es: {variables_fallback_json}")
+            
+            # Si hay variables con fallback, garantizar que no se pierdan en la conversión
+            variables_fallback_texto = ", ".join(variables_con_fallback_es) if variables_con_fallback_es else ""
+            
             if img:
                 return render(request, 'etiquetas/png.html', {
                     'imagen': img, 
                     'variables': variables_encontradas,
                     'idiomas': idiomas,
-                    'idioma_actual': idioma_default  # Para marcar el idioma seleccionado
+                    'idioma_actual': idioma_default,  # Para marcar el idioma seleccionado
+                    'variables_con_fallback_es': variables_fallback_json,  # Variables que usan el idioma por defecto (como JSON)
+                    'variables_fallback_texto': variables_fallback_texto,  # Variables como texto plano para respaldo
+                    'tiene_fallbacks': len(variables_con_fallback_es) > 0,  # Flag booleano para simplicidad
                 })
             else:
                 return render(request, 'etiquetas/png.html', {
                     'error': 'No se pudo generar la imagen',
                     'idiomas': idiomas,
-                    'idioma_actual': idioma_default  # Mantener el idioma seleccionado incluso en caso de error
+                    'idioma_actual': idioma_default,  # Mantener el idioma seleccionado incluso en caso de error
+                    'variables_con_fallback_es': variables_fallback_json  # Variables que usan el idioma por defecto (como JSON)
                 })
         except Exception as e:
             # Logs eliminados para producción
@@ -243,6 +540,7 @@ def etiqueta_png(request):
             })
 
 
+# -- Visto
 
 def index(request):
     variables = Variable.objects.values_list('codigo', flat=True)
@@ -277,10 +575,11 @@ def index(request):
         'idiomas': idiomas,  # Pasar los idiomas a la plantilla
     })
 
+
 def renderizar_etiqueta(request, etiqueta_id):
+    pdb.set_trace()
     """Vista para renderizar una etiqueta específica por su ID"""
     # Obtener todos los idiomas para el selector
-    from .models import Idioma
     idiomas = Idioma.objects.all()
     
     etiqueta = get_object_or_404(Etiqueta, id=etiqueta_id)
@@ -295,20 +594,25 @@ def renderizar_etiqueta(request, etiqueta_id):
     idioma_default = 'ES'
     if request.GET.get('idioma'):
         try:
-            from .models import Idioma
             Idioma.objects.get(codigo=request.GET.get('idioma'))  # codigo es la clave primaria
             idioma_default = request.GET.get('idioma')
         except Exception:
             pass
-            
+    
+    # El valor de IDIOMAVARIABLE en el ZPL, si existe, tendrá prioridad sobre el idioma_default
+    # Esto se maneja dentro de procesar_variables_con_idioma
     # Procesar las variables con el idioma correspondiente
-    zpl, variables_no_encontradas = procesar_variables_con_idioma(zpl, idioma_default)
+    zpl, variables_no_encontradas, variables_con_fallback_es = procesar_variables_con_idioma(zpl, idioma_default)
     
     # Registrar variables no encontradas para seguimiento
     if variables_no_encontradas:
         info_adicional = f"Etiqueta ID: {etiqueta_id}, Nombre: '{etiqueta.nombre}', Idioma: {idioma_default}"
         print(f"[renderizar_etiqueta] Variables no encontradas: {variables_no_encontradas}")
         print(f"[renderizar_etiqueta] Info adicional: {info_adicional}")
+        
+    # Registrar variables que usan el idioma por defecto (ES)
+    if variables_con_fallback_es:
+        print(f"[renderizar_etiqueta] Variables usando idioma por defecto (ES): {variables_con_fallback_es}")
     
     # Actualizar el ZPL con variables reemplazadas
     etiqueta.contenido_zpl = zpl
@@ -317,14 +621,21 @@ def renderizar_etiqueta(request, etiqueta_id):
     labelary = Labelary()
     img = labelary.renderizar_etiqueta(etiqueta)
     
+    # Convertir la lista de variables con fallback a JSON
+    variables_fallback_json = json.dumps(variables_con_fallback_es) if variables_con_fallback_es else '[]'
+    print(f"[renderizar_etiqueta] Variables con fallback (JSON): {variables_fallback_json}")
+    
     return render(request, 'etiquetas/png.html', {
         'imagen': img, 
         'variables': variables_encontradas,
         'idiomas': idiomas,
-        'idioma_actual': idioma_default  # Para marcar el idioma seleccionado
+        'idioma_actual': idioma_default,  # Para marcar el idioma seleccionado
+        'variables_con_fallback_es': variables_fallback_json  # Variables que usan el idioma por defecto (como JSON)
     })
 
-# Vistas para manejar el ZPL de las etiquetas
+# Vistas para manejar el ZPL de las etiquetas 
+# --- VISTO
+
 def get_zpl(request, etiqueta_id):
     """Obtiene el ZPL de una etiqueta específica y su configuración"""
     try:
@@ -363,6 +674,8 @@ def get_zpl(request, etiqueta_id):
     except Exception as e:
         # Logs eliminados para producción
         return JsonResponse({'error': f'Error al obtener la etiqueta: {str(e)}'}, status=400)
+    
+# --- VISTO
 
 def actualizar_zpl(request):
     """Actualiza el ZPL y opcionalmente el nombre de una etiqueta en la base de datos"""
@@ -396,6 +709,8 @@ def actualizar_zpl(request):
             return JsonResponse({'success': False, 'error': str(e)}, status=500)
     else:
         return JsonResponse({'success': False, 'error': 'Método no permitido'}, status=405)
+    
+# --- Visto
 
 def crear_etiqueta(request):
     """Vista para crear una nueva etiqueta desde la interfaz de edición manual"""
@@ -421,7 +736,7 @@ def crear_etiqueta(request):
                     'errorType': 'duplicate'
                 }, status=400)
             
-            # Obtener los objetos relacionados
+            # Obtener los objetos relacionados si alguna falla lo caputa le bloque except y mostaramos el error
             impresora = get_object_or_404(Impresora, id=impresora_id)
             insumo = get_object_or_404(Insumo, id=insumo_id)
             rotacion = get_object_or_404(Rotacion, id=rotacion_id)
@@ -442,11 +757,11 @@ def crear_etiqueta(request):
     else:
         return JsonResponse({'success': False, 'error': 'Método no permitido'}, status=405)
 
+
+# VISTO
 def visualizar_etiqueta(request):
     """Vista para visualizar una etiqueta con los parámetros seleccionados sin guardarla"""
-    
     # Obtener todos los idiomas para el selector
-    from .models import Idioma
     idiomas = Idioma.objects.all()
     
     if request.method == "POST":
@@ -483,20 +798,48 @@ def visualizar_etiqueta(request):
             idioma_default = 'ES'  # Idioma por defecto (en mayúsculas)
             if 'idioma' in request.POST and request.POST.get('idioma'):
                 try:
-                    from .models import Idioma
                     Idioma.objects.get(codigo=request.POST.get('idioma'))  # codigo es la clave primaria
                     idioma_default = request.POST.get('idioma')
                 except Exception:
                     pass
             
+            # Debug del idioma seleccionado
+            print(f"[visualizar_etiqueta] Idioma seleccionado para procesar ZPL: {idioma_default}")
+            print(f"[visualizar_etiqueta] Ejemplo ZPL recibido (primeros 100 chars): {zpl[:100]}")
+            print("[visualizar_etiqueta] Buscando patrones FIIDIOMAVARIABLE en ZPL...")
+            
+            # Buscar específicamente patrones FIIDIOMAVARIABLE antes de procesar
+            patron_fiidioma = re.compile(r'\[@([^@\[\];]+);\s*FIIDIOMAVARIABLE\s*@]', re.IGNORECASE)
+            matches = patron_fiidioma.findall(zpl)
+            if matches:
+                print(f"[visualizar_etiqueta] Encontrados {len(matches)} patrones FIIDIOMAVARIABLE: {matches}")
+            
+            # El valor de IDIOMAVARIABLE en el ZPL, si existe, tendrá prioridad sobre el idioma_default
+            # Esto se maneja dentro de procesar_variables_con_idioma
             # Procesar las variables con el idioma correspondiente
-            zpl, variables_no_encontradas = procesar_variables_con_idioma(zpl, idioma_default)
+            zpl, variables_no_encontradas, variables_con_fallback_es = procesar_variables_con_idioma(zpl, idioma_default)
             
             # Registrar variables no encontradas para seguimiento
             if variables_no_encontradas:
                 info_adicional = f"Tipo etiqueta: {tipo_etiqueta}, Idioma: {idioma_default}"
                 print(f"[visualizar_etiqueta] Variables no encontradas: {variables_no_encontradas}")
                 print(f"[visualizar_etiqueta] Info adicional: {info_adicional}")
+                
+            # Registrar variables que usan el idioma por defecto (ES)
+            if variables_con_fallback_es:
+                print(f"[visualizar_etiqueta] Variables usando idioma por defecto (ES): {variables_con_fallback_es}")
+            
+            # Verificar si la variable Definiciones.sDescripcion existe en el idioma actual
+            try:
+                # Buscar específicamente los valores para diagnóstico
+                for var_check in ["Definiciones.sDescripcion", "DefinicionesCuartos.sDescripcion"]:
+                    try:
+                        var_obj = Variable.objects.get(codigo=var_check, idioma=idioma_default)
+                        print(f"[visualizar_etiqueta] Variable '{var_check}' en idioma '{idioma_default}' tiene valor: '{var_obj.default}'")
+                    except Variable.DoesNotExist:
+                        print(f"[visualizar_etiqueta] Variable '{var_check}' NO existe en idioma '{idioma_default}'")
+            except Exception as e:
+                print(f"[visualizar_etiqueta] Error al verificar variables: {str(e)}")
             
             # Actualizar el ZPL con las variables reemplazadas
             etiqueta.contenido_zpl = zpl
@@ -505,12 +848,29 @@ def visualizar_etiqueta(request):
             labelary = Labelary()
             img = labelary.renderizar_etiqueta(etiqueta)
             
-            return render(request, 'etiquetas/png.html', {
+            # Convertir la lista de variables con fallback a JSON
+            variables_fallback_json = json.dumps(variables_con_fallback_es) if variables_con_fallback_es else '[]'
+            print(f"[visualizar_etiqueta] JSON de variables con fallback: {variables_fallback_json}")
+            
+            # Para propósitos de prueba, si está en modo de prueba y no hay variables con fallback,
+            # agregar algunas variables de prueba cuando el idioma no es español
+            if idioma_default != 'ES' and request.GET.get('test_fallback') == '1':
+                print("[visualizar_etiqueta] Modo de prueba - Agregando variables de prueba")
+                variables_fallback_json = json.dumps(["Variable_Prueba1", "Variable_Prueba2"])
+            
+            # Crear el contexto para el template
+            context = {
                 'imagen': img, 
                 'variables': variables_encontradas,
                 'idiomas': idiomas,
-                'idioma_actual': idioma_default  # Para marcar el idioma seleccionado
-            })
+                'idioma_actual': idioma_default,  # Para marcar el idioma seleccionado
+                'variables_con_fallback_es': variables_fallback_json  # Variables que usan el idioma por defecto (como JSON)
+            }
+            
+            print(f"[visualizar_etiqueta] Contexto enviado - idioma_actual: {context['idioma_actual']}")
+            print(f"[visualizar_etiqueta] Contexto enviado - variables_con_fallback_es: {context['variables_con_fallback_es']}")
+            
+            return render(request, 'etiquetas/png.html', context)
         
         except Exception as e:
             # Determinar el idioma actual (usar el valor por defecto si no se especificó)
@@ -551,6 +911,8 @@ def actualizar_nombre_etiqueta(request):
     else:
         return JsonResponse({'success': False, 'error': 'Método no permitido'}, status=405)
 
+
+#  ----- VISTO
 def duplicar_etiqueta(request):
     """Duplica una etiqueta existente con un nuevo nombre"""
     if request.method == "POST":
