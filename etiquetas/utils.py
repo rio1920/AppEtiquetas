@@ -452,15 +452,18 @@ class Patrones:
 
         # Patrón para variables de fecha: [@Variable;FFdd/MM/yyyy@] y otros formatos
         patron_fecha = re.compile(r'\[@([^@\[\];]+);([FfDdMmYyHhSs/.-:]+)@]')
+        print(patron_fecha)
         for variable, formato in patron_fecha.findall(zpl):
             var_limpia = Patrones.limpiar_variable(variable)
             if var_limpia and var_limpia not in variables:
                 variables.append(var_limpia)
             # No necesitamos hacer nada con el formato aquí, solo extraer la variable
-                
+                print(f"Variable de fecha encontrada: {var_limpia} con formato: {formato}")
         # Patrón para variables con asignación de valor: [@IDIOMAVARIABLE=valor@]
         patron_idioma_valor = re.compile(r'\[@IDIOMAVARIABLE=([^@\[\]]+)@]')
+        print(patron_idioma_valor)
         for valor in patron_idioma_valor.findall(zpl):
+            print(f"Valor de IDIOMAVARIABLE encontrado: {valor}")
             # Agregar IDIOMAVARIABLE a la lista de variables encontradas
             if 'IDIOMAVARIABLE' not in variables:
                 variables.append('IDIOMAVARIABLE')
@@ -468,7 +471,9 @@ class Patrones:
         # Patrón especificado: [@Variable[@IDIOMAVARIABLE@]@]
         # Primero extraemos este patrón específico
         patron_variable_idioma = re.compile(r'\[@([^@\[\]]+)\[@([^@\[\]]+)@]@]')
+        print(patron_variable_idioma)
         for variable, idioma_var in patron_variable_idioma.findall(zpl):
+            print(f"Variable encontrada: {variable} con idioma: {idioma_var}")
             Patrones.agregar_var(variable, variables)
             # Si la variable interna es IDIOMAVARIABLE, la agregamos también
             if idioma_var == "IDIOMAVARIABLE":
@@ -479,7 +484,9 @@ class Patrones:
         # Buscar patrón con idioma tradicional [@Variable@IDIOMAVARIABLE@] 
         # incluyendo variables con comillas y parámetros [@"Variable";params@IDIOMAVARIABLE@]
         patron_con_idioma = re.compile(r'\[@([^@\[\];]+(?:;[^@\[\]]+)?)@([^@\[\]]+)@]')
+        print(patron_con_idioma)
         for var, idioma in patron_con_idioma.findall(zpl):
+            print(f"Variable encontrada: {var} con idioma: {idioma}")
             # Evitamos capturar el patrón anterior nuevamente
             if not re.search(r'\[@[^@\[\]]+\[@[^@\[\]]+@]@]', f"[@{var}@{idioma}@]"):
                 Patrones.agregar_var(var, variables)
@@ -487,7 +494,9 @@ class Patrones:
 
         # Buscar patrón anidado general [@var1[@var2@]@] que no sea el específico de idiomas
         patron_anidado = re.compile(r'\[@([^@\[\];]+(?:;[^@\[\]]+)?)\[@([^@\[\];]+(?:;[^@\[\]]+)?)@]@]')
+        print(patron_anidado)
         for externo, interno in patron_anidado.findall(zpl):
+            
             # Evitar duplicados ya capturados por patron_variable_idioma
             var_externo = Patrones.limpiar_variable(externo)
             var_interno = Patrones.limpiar_variable(interno)

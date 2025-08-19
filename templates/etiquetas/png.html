@@ -1,15 +1,52 @@
 <!-- Se eliminó el selector de idioma con botón, ahora se maneja desde los formularios principales -->
 
+<!-- Estilos mínimos necesarios -->
+<style>
+  .alert-warning {
+    background-color: #fff3cd;
+    color: #664d03;
+    padding: 15px;
+    border-radius: 5px;
+    border: 1px solid #ffecb5;
+    margin: 10px 0;
+  }
+
+  .alert-danger {
+    background-color: #f8d7da;
+    color: #842029;
+    padding: 15px;
+    border-radius: 5px;
+    border: 1px solid #f5c2c7;
+    margin: 10px 0;
+  }
+
+  .card {
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    overflow: hidden;
+    margin-bottom: 15px;
+  }
+
+  .card-body {
+    padding: 8px;
+  }
+
+  .img-fluid {
+    max-width: 100%;
+    height: auto;
+  }
+</style>
+
+<!-- PRIMERO: Mostrar la imagen o el mensaje de error -->
 {% if error %}
 <div class="alert alert-danger">{{ error }}</div>
 {% elif imagen %}
 <div class="card">
-  <div class="card-body p-2">
+  <div class="card-body">
     <img
-      class="img-fluid"
       src="{{ imagen }}"
       alt="Etiqueta generada"
-      style="background-color: white"
+      style="background-color: white; max-width: 100%"
     />
   </div>
 </div>
@@ -19,4 +56,93 @@
 </div>
 {% endif %}
 
-<!-- Se eliminó el script para manejar el formulario de idioma ya que ahora se maneja directamente desde los formularios principales -->
+<!-- SEGUNDO: Mostrar el mensaje de advertencia si hay variables con fallback -->
+{% if variables_con_fallback_es != "[]" %}
+<div
+  class="alert alert-warning"
+  style="margin-top: 15px; border-left: 5px solid #ffc107; padding: 15px"
+>
+  <strong style="font-size: 16px">⚠️ Advertencia:</strong>
+  <p>
+    Las siguientes variables no tienen traducción en el idioma
+    <strong>{{ idioma_actual }}</strong> y se están mostrando en español:
+  </p>
+
+  <!-- Variables listadas directamente sin JavaScript -->
+  <div
+    style="
+      margin-top: 10px;
+      background-color: #fff8e1;
+      padding: 10px;
+      border-radius: 4px;
+      border: 1px dashed #ffb300;
+    "
+  >
+    <!-- Mostrar directamente el texto con las variables -->
+    {% if variables_fallback_texto %}
+    <div
+      style="font-weight: bold; color: #dd6b20; font-size: 15px"
+      id="direct-variables"
+    >
+      {{ variables_fallback_texto }}
+    </div>
+    {% else %}
+    <!-- Fallback en caso de que el texto directo no esté disponible -->
+    <div
+      style="font-weight: bold; color: #dd6b20; font-size: 15px"
+      id="direct-variables"
+    >
+      {{ variables_con_fallback_es }}
+    </div>
+    {% endif %}
+
+    <!-- Respaldo con JavaScript para mejor formato -->
+    <div
+      style="font-weight: bold; color: #dd6b20; font-size: 15px; display: none"
+      id="variables-fallback-list"
+    ></div>
+  </div>
+</div>
+
+<script>
+  // Procesamos inmediatamente para mostrar las variables
+  try {
+    // Guardamos el valor raw para depuración
+    const variablesRaw = "{{ variables_con_fallback_es|escapejs }}";
+    console.log("Variables Raw:", variablesRaw);
+
+    // Intentamos parsear como JSON
+    const variables = JSON.parse(variablesRaw);
+    console.log("Variables parseadas:", variables);
+
+    if (variables && variables.length > 0) {
+      // Reemplazar el contenido del elemento directo con un formato mejor
+      document.getElementById("variables-fallback-list").innerHTML = variables
+        .map(
+          (v) =>
+            `<span style="background-color: #fff3cd; padding: 3px 6px; margin: 2px; border-radius: 3px; border: 1px solid #ffeeba; display: inline-block;">${v}</span>`
+        )
+        .join(" ");
+      document.getElementById("variables-fallback-list").style.display =
+        "block";
+      document.getElementById("direct-variables").style.display = "none";
+
+      // También mostramos una alerta para asegurar que el usuario vea el mensaje
+      setTimeout(function () {
+        alert(
+          "ADVERTENCIA: Las siguientes variables no tienen traducción en el idioma '" +
+            "{{ idioma_actual }}" +
+            "' y se están mostrando en español: " +
+            variables.join(", ")
+        );
+      }, 800);
+    } else {
+      console.log("Array de variables vacío o nulo");
+    }
+  } catch (e) {
+    console.error("Error al procesar variables:", e);
+  }
+</script>
+{% endif %}
+
+<!-- Esta implementación simplificada utiliza alertas estándar para mostrar las advertencias sobre variables sin traducción -->
