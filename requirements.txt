@@ -4,4 +4,5 @@ django-cors-headers==4.6.0
 httpx
 environs
 psycopg2-binary
-
+pytest
+pytest-django
