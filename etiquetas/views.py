@@ -453,6 +453,18 @@ def etiqueta_png(request):
             # Extraer todas las variables para mantener compatibilidad con el código existente
             variables_encontradas = Patrones.extraer_variables(zpl)
             
+            # Buscar variables que existen en la plantilla pero no están en la base de datos
+            variables_faltantes = []
+            for var in variables_encontradas:
+                try:
+                    # Verificar si la variable existe en cualquier idioma
+                    if not Variable.objects.filter(codigo=var).exists():
+                        # Si no existe, la agregamos a las faltantes
+                        if var not in variables_faltantes and var != 'IDIOMAVARIABLE':
+                            variables_faltantes.append(var)
+                except Exception as e:
+                    print(f"Error al verificar variable {var}: {str(e)}", flush=True)
+            
             # La lógica para extraer IDIOMAVARIABLE de diferentes formas ahora está en procesar_variables_con_idioma
             # Aquí sólo necesitamos asignar el idioma seleccionado en la UI si está disponible
             idioma_default = 'ES'  # Valor predeterminado
@@ -495,13 +507,20 @@ def etiqueta_png(request):
             # Convertir la lista de variables con fallback a JSON
             variables_fallback_json = json.dumps(variables_con_fallback_es) if variables_con_fallback_es else '[]'
             
+            # Convertir la lista de variables faltantes a JSON
+            variables_faltantes_json = json.dumps(variables_faltantes) if variables_faltantes else '[]'
+            
             # Registrar en el log las variables con fallback para debug
             print(f"[visualizar_etiqueta] JSON de variables con fallback: {variables_fallback_json}")
+            print(f"[visualizar_etiqueta] JSON de variables faltantes: {variables_faltantes_json}")
             print(f"[visualizar_etiqueta] Contexto enviado - idioma_actual: {idioma_default}")
             print(f"[visualizar_etiqueta] Contexto enviado - variables_con_fallback_es: {variables_fallback_json}")
             
             # Si hay variables con fallback, garantizar que no se pierdan en la conversión
             variables_fallback_texto = ", ".join(variables_con_fallback_es) if variables_con_fallback_es else ""
+            
+            # Variables faltantes como texto plano para respaldo
+            variables_faltantes_texto = ", ".join(variables_faltantes) if variables_faltantes else ""
             
             if img:
                 return render(request, 'etiquetas/png.html', {
@@ -511,14 +530,18 @@ def etiqueta_png(request):
                     'idioma_actual': idioma_default,  # Para marcar el idioma seleccionado
                     'variables_con_fallback_es': variables_fallback_json,  # Variables que usan el idioma por defecto (como JSON)
                     'variables_fallback_texto': variables_fallback_texto,  # Variables como texto plano para respaldo
+                    'variables_faltantes': variables_faltantes_json,  # Variables que faltan en la base de datos (como JSON)
+                    'variables_faltantes_texto': variables_faltantes_texto,  # Variables faltantes como texto plano
                     'tiene_fallbacks': len(variables_con_fallback_es) > 0,  # Flag booleano para simplicidad
+                    'tiene_faltantes': len(variables_faltantes) > 0,  # Flag booleano para variables faltantes
                 })
             else:
                 return render(request, 'etiquetas/png.html', {
                     'error': 'No se pudo generar la imagen',
                     'idiomas': idiomas,
                     'idioma_actual': idioma_default,  # Mantener el idioma seleccionado incluso en caso de error
-                    'variables_con_fallback_es': variables_fallback_json  # Variables que usan el idioma por defecto (como JSON)
+                    'variables_con_fallback_es': variables_fallback_json,  # Variables que usan el idioma por defecto (como JSON)
+                    'variables_faltantes': variables_faltantes_json  # Variables que faltan en la base de datos (como JSON)
                 })
         except Exception as e:
             # Logs eliminados para producción
@@ -533,10 +556,16 @@ def etiqueta_png(request):
                 except Exception:
                     pass
             
+            # En caso de error, intentamos al menos enviar una lista vacía para variables_faltantes
+            variables_faltantes_json = '[]'
+            variables_faltantes_texto = ""
+            
             return render(request, 'etiquetas/png.html', {
                 'error': f'Error al generar la etiqueta: {str(e)}',
                 'idiomas': idiomas,
-                'idioma_actual': idioma_default
+                'idioma_actual': idioma_default,
+                'variables_faltantes': variables_faltantes_json,  # Añadimos variables faltantes como JSON vacío
+                'variables_faltantes_texto': variables_faltantes_texto  # También como texto plano vacío
             })
 
 
@@ -577,7 +606,6 @@ def index(request):
 
 
 def renderizar_etiqueta(request, etiqueta_id):
-    pdb.set_trace()
     """Vista para renderizar una etiqueta específica por su ID"""
     # Obtener todos los idiomas para el selector
     idiomas = Idioma.objects.all()
@@ -589,6 +617,20 @@ def renderizar_etiqueta(request, etiqueta_id):
     
     # Extraer todas las variables para mantener compatibilidad con el código existente
     variables_encontradas = Patrones.extraer_variables(zpl)
+    print(variables_encontradas,flush=True)
+    print("---------------------------------------------------",flush=True)
+    
+    # Buscar variables que existen en la plantilla pero no están en la base de datos
+    variables_faltantes = []
+    for var in variables_encontradas:
+        try:
+            # Verificar si la variable existe en cualquier idioma
+            if not Variable.objects.filter(codigo=var).exists():
+                # Si no existe, la agregamos a las faltantes
+                if var not in variables_faltantes and var != 'IDIOMAVARIABLE':
+                    variables_faltantes.append(var)
+        except Exception as e:
+            print(f"Error al verificar variable {var}: {str(e)}", flush=True)
     
     # Idioma por defecto 'ES' (español), se podría configurar como parámetro en la solicitud
     idioma_default = 'ES'
@@ -625,12 +667,25 @@ def renderizar_etiqueta(request, etiqueta_id):
     variables_fallback_json = json.dumps(variables_con_fallback_es) if variables_con_fallback_es else '[]'
     print(f"[renderizar_etiqueta] Variables con fallback (JSON): {variables_fallback_json}")
     
+    # Convertir la lista de variables faltantes a JSON
+    variables_faltantes_json = json.dumps(variables_faltantes) if variables_faltantes else '[]'
+    print(f"[renderizar_etiqueta] Variables faltantes (JSON): {variables_faltantes_json}")
+    
+    # Convertir a texto plano para respaldo
+    variables_fallback_texto = ", ".join(variables_con_fallback_es) if variables_con_fallback_es else ""
+    variables_faltantes_texto = ", ".join(variables_faltantes) if variables_faltantes else ""
+    
     return render(request, 'etiquetas/png.html', {
         'imagen': img, 
         'variables': variables_encontradas,
         'idiomas': idiomas,
         'idioma_actual': idioma_default,  # Para marcar el idioma seleccionado
-        'variables_con_fallback_es': variables_fallback_json  # Variables que usan el idioma por defecto (como JSON)
+        'variables_con_fallback_es': variables_fallback_json,  # Variables que usan el idioma por defecto (como JSON)
+        'variables_fallback_texto': variables_fallback_texto,  # Variables como texto plano para respaldo
+        'variables_faltantes': variables_faltantes_json,  # Variables que faltan en la base de datos (como JSON)
+        'variables_faltantes_texto': variables_faltantes_texto,  # Variables faltantes como texto plano
+        'tiene_fallbacks': len(variables_con_fallback_es) > 0,  # Flag booleano para simplicidad
+        'tiene_faltantes': len(variables_faltantes) > 0  # Flag booleano para variables faltantes
     })
 
 # Vistas para manejar el ZPL de las etiquetas 
@@ -773,7 +828,16 @@ def visualizar_etiqueta(request):
         zpl = request.POST.get('zpl')
         # Validar que tengamos los datos necesarios
         if not impresora_id or not insumo_id or not rotacion_id or not zpl:
-            return render(request, 'etiquetas/png.html', {'error': 'Faltan datos obligatorios', 'idiomas': idiomas})
+            # En caso de error por datos faltantes, enviamos una lista vacía para variables_faltantes
+            variables_faltantes_json = '[]'
+            variables_faltantes_texto = ""
+            
+            return render(request, 'etiquetas/png.html', {
+                'error': 'Faltan datos obligatorios', 
+                'idiomas': idiomas,
+                'variables_faltantes': variables_faltantes_json,  # Añadimos variables faltantes como JSON vacío
+                'variables_faltantes_texto': variables_faltantes_texto  # También como texto plano vacío
+            })
         
         try:
             # Obtener objetos relacionados
@@ -803,6 +867,20 @@ def visualizar_etiqueta(request):
                 except Exception:
                     pass
             
+            # Buscar variables que existen en la plantilla pero no están en la base de datos
+            variables_faltantes = []
+            for var in variables_encontradas:
+                try:
+                    # Verificar si la variable existe en cualquier idioma
+                    if not Variable.objects.filter(codigo=var).exists():
+                        # Si no existe, la agregamos a las faltantes
+                        if var not in variables_faltantes and var != 'IDIOMAVARIABLE':
+                            variables_faltantes.append(var)
+                except Exception as e:
+                    print(f"Error al verificar variable {var}: {str(e)}", flush=True)
+            
+            print(variables_encontradas, flush=True)
+            print("---------------------------------------------------", flush=True )
             # Debug del idioma seleccionado
             print(f"[visualizar_etiqueta] Idioma seleccionado para procesar ZPL: {idioma_default}")
             print(f"[visualizar_etiqueta] Ejemplo ZPL recibido (primeros 100 chars): {zpl[:100]}")
@@ -852,6 +930,10 @@ def visualizar_etiqueta(request):
             variables_fallback_json = json.dumps(variables_con_fallback_es) if variables_con_fallback_es else '[]'
             print(f"[visualizar_etiqueta] JSON de variables con fallback: {variables_fallback_json}")
             
+            # Convertir la lista de variables faltantes a JSON
+            variables_faltantes_json = json.dumps(variables_faltantes) if variables_faltantes else '[]'
+            print(f"[visualizar_etiqueta] JSON de variables faltantes: {variables_faltantes_json}")
+            
             # Para propósitos de prueba, si está en modo de prueba y no hay variables con fallback,
             # agregar algunas variables de prueba cuando el idioma no es español
             if idioma_default != 'ES' and request.GET.get('test_fallback') == '1':
@@ -864,7 +946,8 @@ def visualizar_etiqueta(request):
                 'variables': variables_encontradas,
                 'idiomas': idiomas,
                 'idioma_actual': idioma_default,  # Para marcar el idioma seleccionado
-                'variables_con_fallback_es': variables_fallback_json  # Variables que usan el idioma por defecto (como JSON)
+                'variables_con_fallback_es': variables_fallback_json,  # Variables que usan el idioma por defecto (como JSON)
+                'variables_faltantes': variables_faltantes_json  # Variables que faltan en la base de datos (como JSON)
             }
             
             print(f"[visualizar_etiqueta] Contexto enviado - idioma_actual: {context['idioma_actual']}")
@@ -883,13 +966,27 @@ def visualizar_etiqueta(request):
                 except Exception:
                     pass
                     
+            # En caso de error, intentamos al menos enviar una lista vacía para variables_faltantes
+            variables_faltantes_json = '[]'
+            variables_faltantes_texto = ""
+            
             return render(request, 'etiquetas/png.html', {
                 'error': f'Error al visualizar: {str(e)}',
                 'idiomas': idiomas,
-                'idioma_actual': idioma_default
+                'idioma_actual': idioma_default,
+                'variables_faltantes': variables_faltantes_json,  # Añadimos variables faltantes como JSON vacío
+                'variables_faltantes_texto': variables_faltantes_texto  # También como texto plano vacío
             })
     
-    return render(request, 'etiquetas/png.html', {'error': 'Método no permitido'})
+    # En caso de error por método no permitido, enviamos una lista vacía para variables_faltantes
+    variables_faltantes_json = '[]'
+    variables_faltantes_texto = ""
+    
+    return render(request, 'etiquetas/png.html', {
+        'error': 'Método no permitido',
+        'variables_faltantes': variables_faltantes_json,  # Añadimos variables faltantes como JSON vacío
+        'variables_faltantes_texto': variables_faltantes_texto  # También como texto plano vacío
+    })
 
 def actualizar_nombre_etiqueta(request):
     """Actualiza el nombre de una etiqueta existente"""

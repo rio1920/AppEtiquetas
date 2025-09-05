@@ -145,4 +145,82 @@
 </script>
 {% endif %}
 
+<!-- TERCERO: Mostrar mensaje de error si hay variables que faltan en la base de datos -->
+{% if variables_faltantes != "[]" %}
+<div
+  class="alert alert-danger"
+  style="margin-top: 15px; border-left: 5px solid #dc3545; padding: 15px"
+>
+  <strong style="font-size: 16px">🚫 Error:</strong>
+  <p>Las siguientes variables no existen en la base de datos:</p>
+
+  <!-- Variables faltantes listadas directamente sin JavaScript -->
+  <div
+    style="
+      margin-top: 10px;
+      background-color: #f8d7da;
+      padding: 10px;
+      border-radius: 4px;
+      border: 1px dashed #dc3545;
+    "
+  >
+    <!-- Mostrar directamente el texto con las variables -->
+    {% if variables_faltantes_texto %}
+    <div
+      style="font-weight: bold; color: #dc3545; font-size: 15px"
+      id="direct-missing-variables"
+    >
+      {{ variables_faltantes_texto }}
+    </div>
+    {% else %}
+    <!-- Fallback en caso de que el texto directo no esté disponible -->
+    <div
+      style="font-weight: bold; color: #dc3545; font-size: 15px"
+      id="direct-missing-variables"
+    >
+      {{ variables_faltantes }}
+    </div>
+    {% endif %}
+
+    <!-- Respaldo con JavaScript para mejor formato -->
+    <div
+      style="font-weight: bold; color: #dc3545; font-size: 15px; display: none"
+      id="variables-missing-list"
+    ></div>
+  </div>
+
+  <script>
+    // Procesamos inmediatamente para mostrar las variables faltantes
+    try {
+      // Guardamos el valor raw para depuración
+      const missingVarsRaw = "{{ variables_faltantes|escapejs }}";
+      console.log("Variables Faltantes Raw:", missingVarsRaw);
+
+      // Intentamos parsear como JSON
+      const missingVars = JSON.parse(missingVarsRaw);
+      console.log("Variables Faltantes parseadas:", missingVars);
+
+      if (missingVars && missingVars.length > 0) {
+        // Reemplazar el contenido del elemento directo con un formato mejor
+        document.getElementById("variables-missing-list").innerHTML =
+          missingVars
+            .map(
+              (v) =>
+                `<span style="background-color: #f8d7da; padding: 3px 6px; margin: 2px; border-radius: 3px; border: 1px solid #f5c2c7; display: inline-block;">${v}</span>`
+            )
+            .join(" ");
+        document.getElementById("variables-missing-list").style.display =
+          "block";
+        document.getElementById("direct-missing-variables").style.display =
+          "none";
+      } else {
+        console.log("Array de variables faltantes vacío o nulo");
+      }
+    } catch (e) {
+      console.error("Error al procesar variables faltantes:", e);
+    }
+  </script>
+</div>
+{% endif %}
+
 <!-- Esta implementación simplificada utiliza alertas estándar para mostrar las advertencias sobre variables sin traducción -->
